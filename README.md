@@ -1,12 +1,14 @@
 # less-concepts-norns
-[less concepts for monome norns]
+less concepts for monome norns
+
+! [image] (https://llllllll.co/uploads/default/original/3X/d/1/d19e15fb63831f7883d2660f77c83cc56811a6bc.png)
 
 quick start (try with internal engine first. it’s Passersby from @markeats and it sounds incredible):
 
 - load the script w/ or w/o grid
 - choose a scale with enc 1
 - use encoders 2 + 3 to choose seed: 36 and rule: 30
-- on grid, press random bit 1 and random bit 2 OR use enc 2 + 3 to choose bits [if a bit = 0, no audible note event will occur for that voice]
+- on grid, press random bit 1 and random bit 2 OR use enc 2 + 3 to choose bits (if a bit = 0, no audible note event will occur for that voice)
 - use key 3 to move down the onscreen menu (not necessary for grid interaction, but try it out!)
 - on grid, press random low and random high OR use enc 2 + 3 to choose low and high bounds for note pool
 - use key 3 to move down the onscreen menu (not necessary for grid interaction, but try it out!)
