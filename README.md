@@ -1,7 +1,7 @@
 # less-concepts-norns
 less concepts for monome norns
 
-! [image] (https://llllllll.co/uploads/default/original/3X/d/1/d19e15fb63831f7883d2660f77c83cc56811a6bc.png)
+![image](https://llllllll.co/uploads/default/original/3X/d/1/d19e15fb63831f7883d2660f77c83cc56811a6bc.png)
 
 quick start (try with internal engine first. it’s Passersby from @markeats and it sounds incredible):
 
