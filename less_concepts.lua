@@ -1,3 +1,7 @@
+-- less concepts: elementary cellular automata sequencer
+-- v1.0.0 @dan_derks
+-- llllllll.co/t/22222
+-- 
 -- hold key 1: start/stop seq.
 -- enc 1: scale
 -- (hold key 2) enc 2: seed
@@ -52,7 +56,7 @@ clk_midi = midi.connect()
 clk_midi.event = clk.process_midi
 
 engine.name = "Passersby"
-passersby = require "we/lib/passersby"
+passersby = include "passersby/lib/passersby_engine"
 
 -- this section is all maths + computational events
 
