@@ -1,4 +1,5 @@
--- less concepts: elementary cellular automata sequencer
+-- less concepts:
+-- 1-d cellular automata sequencer
 -- v1.0.0 @dan_derks
 -- llllllll.co/t/22222
 -- 
