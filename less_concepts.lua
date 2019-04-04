@@ -1,7 +1,7 @@
 -- less concepts:
 -- 1-d cellular automata sequencer
 -- v1.0.0 @dan_derks
--- llllllll.co/t/22222
+-- llllllll.co/t/less-concepts/
 -- 
 -- hold key 1: start/stop seq.
 -- enc 1: scale
