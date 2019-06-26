@@ -1,16 +1,22 @@
 -- less concepts:
--- 1d cellular automata sequencer
--- v1.0.0 @dan_derks
+-- cellular automata sequencer
+-- v2.0.0 @dan_derks
 -- llllllll.co/t/less-concepts/
 -- 
--- hold key 1: start/stop seq.
--- enc 1: scale
--- (hold key 2) enc 2: seed
--- (hold key 2) enc 3: rule
+-- hold key 1: switch between
+-- less concepts +
+-- ~ r e f r a i n
 --
--- press key 3: menu nav.
--- enc 2 + 3: change menu val.
--- params: midi, +/- st, timbre
+-- enc 1: navigate
+-- enc 2: change left side //
+-- enc 3: // change right side
+--
+-- key 3: randomize selected
+-- key 2: take snapshot (*)
+-- when * selected...
+-- key 2: recall snapshot
+-- params: midi, +/- st, timbre,
+-- probabilities, delay settings
 --
 -- plug in grid
 -- (1,1) to (8,2): bits
@@ -35,10 +41,10 @@ local new_high = 14
 local coll = 1
 local new_seed = seed
 local new_rule = rule
-local automatic = 0
+screen_focus = 1
+selected_preset = 0
 local KEY2 = false
 local KEY3 = false
-local KEY3_toggle = 0
 local v1_bit = 0
 local v2_bit = 0
 local v1_octave = 0
@@ -50,11 +56,38 @@ local presets = {}
 local preset_count = 0
 local active_notes_v1 = {}
 local active_notes_v2 = {}
+names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
+edit_foci = {"seed/rule",
+  "lc_gate_probs",
+  "low/high",
+  "rand_prob",
+  "octaves",
+  "lc_bits",
+  "presets"}
+local edit = "seed/rule"
+dd = 0
+random_gate = {}
+for i = 1,4 do
+  random_gate[i] = {}
+  random_gate[i].comparator = 99
+  random_gate[i].probability = 100
+end
+random_note = {}
+for i = 1,2 do
+  random_note[i] = {}
+  random_note[i].tran = 0
+  random_note[i].down = 0
+  random_note[i].comparator = 99
+  random_note[i].probability = 100
+  random_note[i].add = 0
+end
 
 local beatclock = require 'beatclock'
 local clk = beatclock.new()
 clk_midi = midi.connect()
 clk_midi.event = clk.process_midi
+
+clk.on_select_external = function() clk:reset() end --from nattog
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -98,6 +131,7 @@ end
 -- maths: scale seeds to the note pool + range selected
 local function scale(lo, hi, received)
   scaled = math.floor(((((received-1) / (256-1)) * (hi - lo) + lo)))
+  pass_to_refrain = received
 end
 
 -- pack the seeds into clusters, compare these against neighborhoods to determine gates in iterate()
@@ -176,20 +210,51 @@ local function iterate()
   notes_off_v1()
   notes_off_v2()
   seed = next_seed
-    bang()
-    scale(new_low,new_high,seed)
-    if seed_as_binary[v1_bit] == 1 then
-      engine.noteOn(1,midi_to_hz((notes[coll][scaled])+(48+(v1_octave * 12)+semi)),127)
-      m:note_on((notes[coll][scaled])+(36+(v1_octave*12)+semi),127,ch_1)
-      table.insert(active_notes_v1,(notes[coll][scaled])+(36+(v1_octave*12)+semi))
+  bang()
+  scale(new_low,new_high,seed)
+  if seed_as_binary[v1_bit] == 1 then
+    random_gate[1].comparator = math.random(0,100)
+    if random_gate[1].comparator < random_gate[1].probability then
+      random_note[1].comparator = math.random(0,100)
+      if random_note[1].comparator < random_note[1].probability then
+        random_note[1].add = random_note[1].tran
+      else
+        random_note[1].add = 0
+      end
+      engine.noteOn(1,midi_to_hz((notes[coll][scaled])+(48+(v1_octave * 12)+semi+random_note[1].add)),127)
+      m:note_on((notes[coll][scaled])+(36+(v1_octave*12)+semi+random_note[1].add),127,ch_1)
+      table.insert(active_notes_v1,(notes[coll][scaled])+(36+(v1_octave*12)+semi+random_note[1].add))
     end
-    if seed_as_binary[v2_bit] == 1 then
-      engine.noteOn(2,midi_to_hz((notes[coll][scaled])+(48+(v2_octave * 12)+semi)),127)
-      m:note_on((notes[coll][scaled])+(36+(v2_octave*12)+semi),127,ch_2)
-      table.insert(active_notes_v2,(notes[coll][scaled])+(36+(v2_octave*12)+semi))
+  end
+  if seed_as_binary[v2_bit] == 1 then
+    random_gate[2].comparator = math.random(0,100)
+    if random_gate[2].comparator < random_gate[2].probability then
+      random_note[2].comparator = math.random(0,100)
+      if random_note[2].comparator < random_note[2].probability then
+        random_note[2].add = random_note[2].tran
+      else
+        random_note[2].add = 0
+      end
+      engine.noteOn(2,midi_to_hz((notes[coll][scaled])+(48+(v2_octave * 12)+semi+random_note[2].add)),127)
+      m:note_on((notes[coll][scaled])+(36+(v2_octave*12)+semi+random_note[2].add),127,ch_2)
+      table.insert(active_notes_v2,(notes[coll][scaled])+(36+(v2_octave*12)+semi+random_note[2].add))
     end
-    redraw()
-    grid_redraw()
+  end
+  -- EVENTS FOR R E F R A I N
+  if seed_as_binary[track[1].bit] == 1 then
+    random_gate[3].comparator = math.random(0,100)
+    if random_gate[3].comparator < random_gate[3].probability then
+      refrain.reset(1,pass_to_refrain)
+    end
+  end
+  if seed_as_binary[track[2].bit] == 1 then
+    random_gate[4].comparator = math.random(0,100)
+    if random_gate[4].comparator < random_gate[4].probability then
+      refrain.reset(2,pass_to_refrain)
+    end
+  end
+  redraw()
+  grid_redraw()
 end
 
 -- convert midi note to hz for Passersby engine
@@ -212,6 +277,8 @@ local function transpose(semitone)
   semi = semitone
 end
 
+refrain = include "lib/refrain"
+
 -- everything that happens when the script is first loaded
 function init()
   math.randomseed(os.time())
@@ -226,6 +293,7 @@ function init()
   grid_redraw()
   g:refresh()
   m = midi.connect()
+  --clk.on_step = function() iterate() refrain.iterate() end
   clk.on_step = function() iterate() end
   clk.on_select_internal = function() clk:start() end
   clk.on_select_external = function() print("external") end
@@ -234,9 +302,21 @@ function init()
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
   params:add_number("midi ch vox 2", "midi ch vox 2", 1,16,1)
   params:set_action("midi ch vox 2", function (x) midi_vox_2(x) end)
+  params:add_option("scale", "scale", names, 1)
+  params:set_action("scale", function(x) coll = x end)
   params:add_number("global transpose", "global transpose", -24,24,0)
   params:set_action("global transpose", function (x) transpose(x) end)
-  params:add_separator()
+  for i = 1,2 do
+    params:add_control("transpose "..i, "transpose "..i, controlspec.new(-24,24,'lin',1,12,'s/t'))
+    params:set_action("transpose "..i, function(x) random_note[i].tran = x end)
+    params:add_control("tran prob "..i, "tran prob "..i, controlspec.new(0,100,'lin',1,0,'%'))
+    params:set_action("tran prob " ..i, function(x) random_note[i].probability = x end)
+  end
+  for i = 1,2 do
+    params:add_control("gate prob "..i, "gate prob "..i, controlspec.new(0,100,'lin',1,100,'%'))
+    params:set_action("gate prob "..i, function(x) random_gate[i].probability = x end)
+  end
+  refrain.init()
   passersby.add_params()
   bang()
 
@@ -260,7 +340,7 @@ notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,
 
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 
-clk:stop()
+clk:start()
 
 end
 
@@ -269,134 +349,206 @@ end
 -- hardware: key interaction
 function key(n,z)
   if n == 1 and z == 1 then
-    automatic = automatic + 1
-    if automatic % 2 == 1 then
-      clk:start()
-    elseif automatic % 2 == 0 then
-      clk:stop()
-    end
+    screen_focus = screen_focus + 1
   end
+  -----
+if screen_focus % 2 == 1 then
   if n == 2 and z == 1 then
     KEY2 = true
     bang()
     redraw()
+    if preset_count < 8 and edit ~= "presets" then
+      preset_pack()
+      preset_count = preset_count + 1
+      selected_preset = 1
+      grid_redraw()
+    elseif preset_count <= 8 and edit == "presets" then
+      preset_unpack(selected_preset)
+    end
   elseif n == 2 and z == 0 then
     KEY2 = false
-    seed = new_seed
-    rule = new_rule
     bang()
     redraw()
   end
   if n == 3 and z == 1 then
     KEY3 = true
-    KEY3_toggle = KEY3_toggle + 1
-    bang()
-    redraw()
+    if KEY2 == false then
+      if edit ~= "presets" then
+        randomize_some()
+      else
+        randomize_all()
+      end
+    else
+      if edit == "presets" then
+        edit = "lc_bits"
+        dd = 6
+      end
+      presets = {}
+      preset_pool = {}
+      preset_count = 0
+      selected_preset = 0
+      for i=1,8 do
+        g:led(i,8,0)
+      end
+      grid_redraw()
+    end
   elseif n == 3 and z == 0 then
     KEY3 = false
     bang()
     redraw()
   end
+elseif screen_focus % 2 == 0 then
+-- PUT OTHER SCRIPT HARDWARE CONTROLS HERE
+refrain.key(n,z)
+end
 end
 
 -- hardware: encoder interaction
 function enc(n,d)
-  if n == 1 and KEY3 == false and KEY2 == false then
-    coll = math.min(17,(math.max(coll + d,1)))
+if screen_focus % 2 == 1 then
+  if n == 1 then
+    if preset_count > 0 then
+      dd = util.clamp(dd+d,1,7)
+      edit = edit_foci[dd]
+    else
+      dd = util.clamp(dd+d,1,6)
+      edit = edit_foci[dd]
+    end
   end
-  if n == 2 and KEY3 == false and KEY2 == false and KEY3_toggle % 3 == 1 then
-    new_low = math.min(29,(math.max(new_low + d,1)))
-    for i=1,16 do
-      g:led(i,4,0)
-      g:led(i,5,0)
-      if new_low < 17 then
-        g:led(new_low,4,15)
-      elseif new_low > 16 then
-        g:led(new_low-16,5,15)
+  if KEY3 == false and KEY2 == false then
+    if n == 2 then
+      if edit == "presets" then
+        selected_preset = util.clamp(selected_preset+d,1,preset_count)
+      elseif edit == "rand_prob" then
+        params:set("tran prob 1", math.min(100,(math.max(params:get("tran prob 1") + d,0))))
+      elseif edit == "lc_gate_probs" then
+        params:set("gate prob 1", math.min(100,(math.max(params:get("gate prob 1") + d,0))))
+      elseif edit == "low/high" then
+        new_low = math.min(29,(math.max(new_low + d,1)))
+        for i=1,16 do
+          g:led(i,4,0)
+          g:led(i,5,0)
+          if new_low < 17 then
+            g:led(new_low,4,15)
+          elseif new_low > 16 then
+            g:led(new_low-16,5,15)
+          end
+          g:refresh()
+        end
+      elseif edit == "octaves" then
+        v1_octave = math.min(3,(math.max(v1_octave + d,-3)))
+        for i=10,16 do
+          g:led(i,1,0)
+          g:led(v1_octave+13,1,15)
+          g:refresh()
+        end
+      elseif edit == "lc_bits" then
+        v1_bit = math.min(8,(math.max(v1_bit - d,0)))
+      elseif edit == "seed/rule" then
+        new_seed = math.min(255,(math.max(new_seed + d,0)))
+        seed = new_seed
+        rule = new_rule
+        bang()
       end
-      g:refresh()
-    end
-  elseif n == 2 and KEY3 == false and KEY2 == false and KEY3_toggle % 3 == 2 then
-    v1_octave = math.min(3,(math.max(v1_octave + d,-3)))
-    for i=10,16 do
-      g:led(i,1,0)
-      g:led(v1_octave+13,1,15)
-      g:refresh()
-    end
-  elseif n == 2 and KEY2 == false and KEY3_toggle %3 == 0 then
-    v1_bit = math.min(8,(math.max(v1_bit + d,0)))
-  elseif n == 2 and KEY2 then
-    new_seed = math.min(255,(math.max(new_seed + d,0)))
-  end
-  if n == 3 and KEY3 == false and KEY2 == false and KEY3_toggle % 3 == 1 then
-    new_high = math.min(29,(math.max(new_high + d,1)))
-    for i=1,16 do
-      g:led(i,6,0)
-      g:led(i,7,0)
-      if new_high < 17 then
-        g:led(new_high,6,15)
-      elseif new_high > 16 then
-        g:led(new_high-16,7,15)
+    elseif n == 3 then
+      if edit == "lc_gate_probs" then
+        params:set("gate prob 2", math.min(100,(math.max(params:get("gate prob 2") + d,0))))
+      elseif edit == "rand_prob" then
+        params:set("tran prob 2", math.min(100,(math.max(params:get("tran prob 2") + d,0))))
+      elseif edit == "low/high" then
+        new_high = math.min(29,(math.max(new_high + d,1)))
+        for i=1,16 do
+          g:led(i,6,0)
+          g:led(i,7,0)
+          if new_high < 17 then
+            g:led(new_high,6,15)
+          elseif new_high > 16 then
+            g:led(new_high-16,7,15)
+          end
+          g:refresh()
+        end
+      elseif edit == "octaves" then
+        v2_octave = math.min(3,(math.max(v2_octave + d,-3)))
+        for i=10,16 do
+          g:led(i,2,0)
+          g:led(v2_octave+13,2,15)
+          g:refresh()
+        end
+      elseif edit == "lc_bits" then
+        v2_bit = math.min(8,(math.max(v2_bit - d,0)))
+      elseif edit == "seed/rule" then
+        new_rule = math.min(255,(math.max(new_rule + d,0)))
+        rule = new_rule
+        seed = new_seed
+        bang()
       end
-      g:refresh()
     end
-  elseif n == 3 and KEY3 == false and KEY2 == false and KEY3_toggle % 3 == 2 then
-    v2_octave = math.min(3,(math.max(v2_octave + d,-3)))
-    for i=10,16 do
-      g:led(i,2,0)
-      g:led(v2_octave+13,2,15)
-      g:refresh()
-    end
-  elseif n == 3 and KEY2 == false and KEY3_toggle %3 == 0 then
-    v2_bit = math.min(8,(math.max(v2_bit + d,0)))
-  elseif n == 3 and KEY2 then
-    new_rule = math.min(255,(math.max(new_rule + d,0)))
   end
   redraw()
+elseif screen_focus % 2 == 0 then
+  --PUT OTHER SCRIPT ENC CONTROLS HERE
+  refrain.enc(n,d)
+end
 end
 
 -- hardware: screen redraw
 function redraw()
+  --screen.clear()
+if screen_focus%2 == 1 then
+  screen.font_face(1)
+  screen.font_size(8)
   screen.clear()
   screen.level(15)
   screen.move(0,10)
+  screen.level(edit == "seed/rule" and 15 or 2)
   screen.text("seed: "..new_seed.." // rule: "..new_rule)
   screen.move(0,20)
-  if KEY3_toggle % 3 == 0 then
-    screen.level(15)
-    screen.text("vox 1 bit: "..v1_bit.." // vox 2 bit: "..v2_bit)
-  elseif KEY3_toggle % 3 == 1 or 2 then
-    screen.level(1)
-    screen.text("vox 1 bit: "..v1_bit.." // vox 2 bit: "..v2_bit)
-  end
+  screen.level(edit == "lc_gate_probs" and 15 or 2)
+  screen.text("gate prob 1: "..params:get("gate prob 1").."% // 2: "..params:get("gate prob 2").."%")
   screen.move(0,30)
-  if KEY3_toggle % 3 == 1 then
-    screen.level(15)
-    screen.text("low: "..new_low.." // high: "..new_high)
-  elseif KEY3_toggle % 3 == 2 or 0 then
-    screen.level(1)
-    screen.text("low: "..new_low.." // high: "..new_high)
-  end
+  screen.level(edit == "low/high" and 15 or 2)
+  screen.text("low: "..new_low.." // high: "..new_high)
   screen.move(0,40)
-  if KEY3_toggle % 3 == 2 then
-    screen.level(15)
-    screen.text("vox 1 oct: "..v1_octave)
-    screen.move(57,40)
-    screen.text("// vox 2 oct: "..v2_octave)
-  elseif KEY3_toggle % 3 == 0 or 1 then
-    screen.level(1)
-    screen.text("vox 1 oct: "..v1_octave)
-    screen.move(57,40)
-    screen.text("// vox 2 oct: "..v2_octave)
-  end
-  screen.level(15)
+  screen.level(edit == "rand_prob" and 15 or 2)
+  screen.text("tran prob 1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
   screen.move(0,50)
-  screen.text("scale: "..names[coll])
-  screen.move(0,60)
-  screen.text("current: "..seed)
-  screen.move(60,60)
-  screen.text("next: "..next_seed)
+  screen.level(edit == "octaves" and 15 or 2)
+  screen.text("vox 1 oct: "..v1_octave)
+  screen.move(57,50)
+  screen.level(edit == "octaves" and 15 or 2)
+  screen.text("// vox 2 oct: "..v2_octave)
+  screen.move(0,62)
+  screen.level(edit == "lc_bits" and 15 or 2)
+  for i = 1,8 do
+    screen.text(seed_as_binary[9-i])
+    screen.move((5*i),62)
+  end
+  screen.font_size(10)
+  screen.move(40-(5*v1_bit),59)
+  screen.text("-")
+  screen.move(40-(5*v2_bit),67)
+  screen.text("-")
+  screen.font_size(8)
+  screen.level(15)
+  screen.move(30,60)
+  for i = 1,8 do
+    screen.move(80+(i*5),62)
+    if edit == "presets" then
+      screen.level(selected_preset == i and 15 or 2)
+    else
+      screen.level(2)
+    end
+    if preset_count < (i) then
+      screen.text("_")
+    else
+      screen.text("*")
+    end
+  end
   screen.update()
+elseif screen_focus%2==0 then
+  -- PUT OTHER SCREEN REDRAW HERE
+  refrain.redraw()
+end
 end
 
 -- hardware: grid connect
@@ -406,7 +558,7 @@ g.key = function(x,y,z)
   if y == 1 and x < 9 then
     g:led(x,y,z*15)
     g:refresh()
-    v1_bit = x
+    v1_bit = 9-x
     bang()
     redraw()
   end
@@ -422,7 +574,7 @@ g.key = function(x,y,z)
   if y == 2 and x < 9 then
     g:led(x,y,z*15)
     g:refresh()
-    v2_bit = x
+    v2_bit = 9-x
     bang()
     redraw()
   end
@@ -527,6 +679,8 @@ g.key = function(x,y,z)
   if y == 8 and z == 1 then
     if x < 9 and x < preset_count+1 then
       preset_unpack(x)
+      selected_preset = x
+      grid_redraw()
     elseif x == 15 then
       presets = {}
       preset_pool = {}
@@ -534,6 +688,7 @@ g.key = function(x,y,z)
       for i=1,8 do
         g:led(i,8,0)
       end
+      selected_preset = 0
       grid_redraw()
     elseif x == 16 then
       preset_pack()
@@ -552,10 +707,10 @@ function grid_redraw()
     g:led(i,2,0)
   end
   if seed_as_binary[v1_bit] == 1 then
-    g:led(v1_bit,1,15)
+    g:led(9-v1_bit,1,15)
   end
   if seed_as_binary[v2_bit] == 1 then
-    g:led(v2_bit,2,15)
+    g:led(9-v2_bit,2,15)
   end
   g:led(1,3,4)
   g:led(2,3,4)
@@ -569,6 +724,7 @@ function grid_redraw()
   for i=1,preset_count do
     g:led(i,8,6)
   end
+  g:led(selected_preset,8,15)
   g:led(15,8,2)
   g:led(16,8,6)
   g:led(v1_octave+13,1,15)
@@ -590,6 +746,51 @@ function randomize_all()
   new_high = math.random(1,29)
   v1_octave = math.random(-2,2)
   v2_octave = math.random(-2,2)
+  bang()
+  redraw()
+  g:all(0)
+  g:led(v1_octave+13,1,15)
+  g:led(v2_octave+13,2,15)
+  if new_low < 17 then
+    g:led(new_low,4,15)
+  elseif new_low > 16 then
+    g:led(new_low-16,5,15)
+  end
+  if new_high < 17 then
+    g:led(new_high,6,15)
+  elseif new_high > 16 then
+    g:led(new_high-16,7,15)
+  end
+  grid_redraw()
+  g:refresh()
+end
+
+function randomize_some()
+  if edit == "seed/rule" then
+    seed = math.random(0,255)
+    new_seed = seed
+    rule = math.random(0,255)
+    new_rule = rule
+  elseif edit == "lc_gate_probs" then
+    for i = 1,2 do
+      params:set("gate prob "..i, math.random(0,100))
+    end
+  elseif edit == "low/high" then
+    new_low = math.random(1,29)
+    new_high = math.random(1,29)
+  elseif edit == "rand_prob" then
+    for i = 1,2 do
+      params:set("tran prob "..i, math.random(0,100))
+    end
+  elseif edit == "octaves" then
+    v1_octave = math.random(-2,2)
+    v2_octave = math.random(-2,2)
+  elseif edit == "lc_bits" then
+    v1_bit = math.random(0,8)
+    v2_bit = math.random(0,8)
+  elseif edit == "presets" then
+    randomize_all()
+  end
   bang()
   redraw()
   g:all(0)
