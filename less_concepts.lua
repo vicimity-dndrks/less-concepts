@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.0.0 @dan_derks
+-- v2.0.1 @dan_derks
 -- llllllll.co/t/less-concepts/
 -- 
 -- hold key 1: switch between
@@ -16,7 +16,8 @@
 -- when * selected...
 -- key 2: recall snapshot
 -- params: midi, +/- st, timbre,
--- probabilities, delay settings
+-- probabilities, delay settings,
+-- save snapshots as a set!
 --
 -- plug in grid
 -- (1,1) to (8,2): bits
@@ -39,7 +40,7 @@ local next_seed = nil
 local new_low = 1
 local new_high = 14
 local coll = 1
-local new_seed = seed
+new_seed = seed -- make local again
 local new_rule = rule
 screen_focus = 1
 selected_preset = 0
@@ -52,8 +53,8 @@ local v2_octave = 0
 local ch_1 = 1
 local ch_2 = 1
 local semi = 0
-local presets = {}
-local preset_count = 0
+--local presets = {}
+preset_count = 0 -- make local again
 local active_notes_v1 = {}
 local active_notes_v2 = {}
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
@@ -81,6 +82,19 @@ for i = 1,2 do
   random_note[i].probability = 100
   random_note[i].add = 0
 end
+new_preset_pool = {}
+for i = 1,9 do
+  new_preset_pool[i] = {}
+  new_preset_pool[i].seed = {}
+  new_preset_pool[i].rule = {}
+  new_preset_pool[i].v1_bit = {}
+  new_preset_pool[i].v2_bit = {}
+  new_preset_pool[i].new_low = {}
+  new_preset_pool[i].new_high = {}
+  new_preset_pool[i].v1_octave = {}
+  new_preset_pool[i].v2_octave = {}
+end
+selected_set = 0
 
 local beatclock = require 'beatclock'
 local clk = beatclock.new()
@@ -292,6 +306,11 @@ function init()
   g:led(v2_octave+13,2,15)
   grid_redraw()
   g:refresh()
+  params:add_number("set", "set", 1,100,1)
+  params:set_action("set", function (x) selected_set = x end)
+  params:add{type = "trigger", id = "load", name = "load", action = loadstate}
+  params:add{type = "trigger", id = "save", name = "save", action = savestate}
+  params:add_separator()
   m = midi.connect()
   --clk.on_step = function() iterate() refrain.iterate() end
   clk.on_step = function() iterate() end
@@ -358,12 +377,14 @@ if screen_focus % 2 == 1 then
     bang()
     redraw()
     if preset_count < 8 and edit ~= "presets" then
-      preset_pack()
+      --preset_pack()
       preset_count = preset_count + 1
+      new_preset_pack(preset_count)
       selected_preset = 1
       grid_redraw()
     elseif preset_count <= 8 and edit == "presets" then
-      preset_unpack(selected_preset)
+      --preset_unpack(selected_preset)
+      new_preset_unpack(selected_preset)
     end
   elseif n == 2 and z == 0 then
     KEY2 = false
@@ -379,14 +400,17 @@ if screen_focus % 2 == 1 then
         randomize_all()
       end
     else
-      if edit == "presets" then
-        edit = "lc_bits"
-        dd = 6
+      if preset_count == 1 then
+        if edit == "presets" then
+          edit = "lc_bits"
+          dd = 6
+        end
       end
-      presets = {}
-      preset_pool = {}
-      preset_count = 0
-      selected_preset = 0
+      --presets = {}
+      --preset_pool = {}
+      preset_remove(selected_preset)
+      --preset_count = 0
+      --selected_preset = 0
       for i=1,8 do
         g:led(i,8,0)
       end
@@ -678,12 +702,16 @@ g.key = function(x,y,z)
   end
   if y == 8 and z == 1 then
     if x < 9 and x < preset_count+1 then
-      preset_unpack(x)
+      --preset_unpack(x)
+      new_preset_unpack(x)
       selected_preset = x
       grid_redraw()
+    elseif x == 14 and preset_count > 0 then
+      preset_remove(selected_preset)
+      grid_constant()
     elseif x == 15 then
-      presets = {}
-      preset_pool = {}
+      --presets = {}
+      --preset_pool = {}
       preset_count = 0
       for i=1,8 do
         g:led(i,8,0)
@@ -691,9 +719,10 @@ g.key = function(x,y,z)
       selected_preset = 0
       grid_redraw()
     elseif x == 16 then
-      preset_pack()
+      --preset_pack()
       if preset_count < 8 then
       preset_count = preset_count + 1
+      new_preset_pack(preset_count)
       grid_redraw()
       end
     end
@@ -725,10 +754,29 @@ function grid_redraw()
     g:led(i,8,6)
   end
   g:led(selected_preset,8,15)
-  g:led(15,8,2)
+  g:led(14,8,2)
+  g:led(15,8,4)
   g:led(16,8,6)
   g:led(v1_octave+13,1,15)
   g:led(v2_octave+13,2,15)
+  g:refresh()
+end
+
+function grid_constant()
+  g:all(0)
+  g:led(v1_octave+13,1,15)
+  g:led(v2_octave+13,2,15)
+  if new_low < 17 then
+    g:led(new_low,4,15)
+  elseif new_low > 16 then
+    g:led(new_low-16,5,15)
+  end
+  if new_high < 17 then
+    g:led(new_high,6,15)
+  elseif new_high > 16 then
+    g:led(new_high-16,7,15)
+  end
+  grid_redraw()
   g:refresh()
 end
 
@@ -748,21 +796,7 @@ function randomize_all()
   v2_octave = math.random(-2,2)
   bang()
   redraw()
-  g:all(0)
-  g:led(v1_octave+13,1,15)
-  g:led(v2_octave+13,2,15)
-  if new_low < 17 then
-    g:led(new_low,4,15)
-  elseif new_low > 16 then
-    g:led(new_low-16,5,15)
-  end
-  if new_high < 17 then
-    g:led(new_high,6,15)
-  elseif new_high > 16 then
-    g:led(new_high-16,7,15)
-  end
-  grid_redraw()
-  g:refresh()
+  grid_constant()
 end
 
 function randomize_some()
@@ -793,70 +827,101 @@ function randomize_some()
   end
   bang()
   redraw()
-  g:all(0)
-  g:led(v1_octave+13,1,15)
-  g:led(v2_octave+13,2,15)
-  if new_low < 17 then
-    g:led(new_low,4,15)
-  elseif new_low > 16 then
-    g:led(new_low-16,5,15)
-  end
-  if new_high < 17 then
-    g:led(new_high,6,15)
-  elseif new_high > 16 then
-    g:led(new_high-16,7,15)
-  end
-  grid_redraw()
-  g:refresh()
+  grid_constant()
 end
 
 -- pack all maths parameters into a volatile preset
-function preset_pack()
-  table.insert(presets, new_seed)
-  table.insert(presets, new_rule)
-  table.insert(presets, v1_bit)
-  table.insert(presets, v2_bit)
-  table.insert(presets, new_low)
-  table.insert(presets, new_high)
-  table.insert(presets, v1_octave)
-  table.insert(presets, v2_octave)
-  preset_pool = { {presets[1],presets[2],presets[3],presets[4],presets[5],presets[6],presets[7],presets[8]},
-                  {presets[9],presets[10],presets[11],presets[12],presets[13],presets[14],presets[15],presets[16]},
-                  {presets[17],presets[18],presets[19],presets[20],presets[21],presets[22],presets[23],presets[24]},
-                  {presets[25],presets[26],presets[27],presets[28],presets[29],presets[30],presets[31],presets[32]},
-                  {presets[33],presets[34],presets[35],presets[36],presets[37],presets[38],presets[39],presets[40]},
-                  {presets[41],presets[42],presets[43],presets[44],presets[45],presets[46],presets[47],presets[48]},
-                  {presets[49],presets[50],presets[51],presets[52],presets[53],presets[54],presets[55],presets[56]},
-                  {presets[57],presets[58],presets[59],presets[60],presets[61],presets[62],presets[63],presets[64]} }
+
+function new_preset_pack(set)
+  new_preset_pool[set].seed = new_seed
+  new_preset_pool[set].rule = new_rule
+  new_preset_pool[set].v1_bit = v1_bit
+  new_preset_pool[set].v2_bit = v2_bit
+  new_preset_pool[set].new_low = new_low
+  new_preset_pool[set].new_high = new_high
+  new_preset_pool[set].v1_octave = v1_octave
+  new_preset_pool[set].v2_octave = v2_octave
 end
 
--- switch all current maths parameters to a volatile preset
-function preset_unpack(set)
-  seed = preset_pool[set][1]
-  new_seed = seed
-  rule = preset_pool[set][2]
-  new_rule = rule
-  v1_bit = preset_pool[set][3]
-  v2_bit = preset_pool[set][4]
-  new_low = preset_pool[set][5]
-  new_high = preset_pool[set][6]
-  v1_octave = preset_pool[set][7]
-  v2_octave = preset_pool[set][8]
+function new_preset_unpack(set)
+  new_seed = new_preset_pool[set].seed
+  seed = new_seed
+  new_rule = new_preset_pool[set].rule
+  rule = new_rule
+  v1_bit = new_preset_pool[set].v1_bit
+  v2_bit = new_preset_pool[set].v2_bit
+  new_low = new_preset_pool[set].new_low
+  new_high = new_preset_pool[set].new_high
+  v1_octave = new_preset_pool[set].v1_octave
+  v2_octave = new_preset_pool[set].v2_octave
   bang()
   redraw()
-  g:all(0)
-  g:led(v1_octave+13,1,15)
-  g:led(v2_octave+13,2,15)
-  if new_low < 17 then
-    g:led(new_low,4,15)
-  elseif new_low > 16 then
-    g:led(new_low-16,5,15)
+  grid_constant()
+end
+
+function preset_remove(set)
+  for i = set,8 do
+    new_preset_pool[i].seed = new_preset_pool[i+1].seed
+    new_preset_pool[i].rule = new_preset_pool[i+1].rule
+    new_preset_pool[i].v1_bit = new_preset_pool[i+1].v1_bit
+    new_preset_pool[i].v2_bit = new_preset_pool[i+1].v2_bit
+    new_preset_pool[i].new_low = new_preset_pool[i+1].new_low 
+    new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
+    new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
+    new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
   end
-  if new_high < 17 then
-    g:led(new_high,6,15)
-  elseif new_high > 16 then
-    g:led(new_high-16,7,15)
+  if selected_preset > 1 and selected_preset < preset_count then
+    selected_preset = selected_preset
+  elseif selected_preset == preset_count then
+    selected_preset = selected_preset - 1
   end
-  grid_redraw()
-  g:refresh()
+  preset_count = preset_count - 1
+  redraw()
+end
+
+-- save snapshots as presets
+-- cannibalized from @justmat
+
+function savestate()
+  local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "w+")
+  io.output(file)
+  io.write("permanence".."\n")
+  io.write(preset_count.."\n")
+  for i = 1,preset_count do
+    io.write(new_preset_pool[i].seed .. "\n")
+    io.write(new_preset_pool[i].rule .. "\n")
+    io.write(new_preset_pool[i].v1_bit .. "\n")
+    io.write(new_preset_pool[i].v2_bit .. "\n")
+    io.write(new_preset_pool[i].new_low .. "\n")
+    io.write(new_preset_pool[i].new_high .. "\n")
+    io.write(new_preset_pool[i].v1_octave .. "\n")
+    io.write(new_preset_pool[i].v2_octave .. "\n")
+  end
+  io.close(file)
+end
+
+function loadstate()
+  local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "r")
+  if file then
+    io.input(file)
+    if io.read() == "permanence" then
+      preset_count = tonumber(io.read())
+      if preset_count > 0 then
+        selected_preset = 1
+      end
+      for i = 1,preset_count do
+        new_preset_pool[i].seed = tonumber(io.read())
+        new_preset_pool[i].rule = tonumber(io.read())
+        new_preset_pool[i].v1_bit = tonumber(io.read())
+        new_preset_pool[i].v2_bit = tonumber(io.read())
+        new_preset_pool[i].new_low = tonumber(io.read())
+        new_preset_pool[i].new_high = tonumber(io.read())
+        new_preset_pool[i].v1_octave = tonumber(io.read())
+        new_preset_pool[i].v2_octave = tonumber(io.read())
+      end
+    else
+      print("invalid data file")
+    end
+    io.close(file)
+  end
 end
