@@ -15,9 +15,11 @@
 -- key 2: take snapshot (*)
 -- when * selected...
 -- key 2: recall snapshot
+-- hold key 2 then key 3 (NEW):
+-- delete selected snapshot
 -- params: midi, +/- st, timbre,
 -- probabilities, delay settings,
--- save snapshots as a set!
+-- save snapshots to set (NEW)
 --
 -- plug in grid
 -- (1,1) to (8,2): bits
@@ -26,7 +28,8 @@
 -- (1,4) to (16,5): low
 -- (1,6) to (16,7): high
 -- (16,8): take snapshot
--- (15,8): clear snapshots
+-- (15,8): clear all snapshots
+-- (14,8): clear selected
 -- (1,8) to (8,8): snapshots
 --
 -- seek.
@@ -40,7 +43,7 @@ local next_seed = nil
 local new_low = 1
 local new_high = 14
 local coll = 1
-new_seed = seed -- make local again
+local new_seed = seed
 local new_rule = rule
 screen_focus = 1
 selected_preset = 0
@@ -53,8 +56,7 @@ local v2_octave = 0
 local ch_1 = 1
 local ch_2 = 1
 local semi = 0
---local presets = {}
-preset_count = 0 -- make local again
+local preset_count = 0
 local active_notes_v1 = {}
 local active_notes_v2 = {}
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
@@ -377,13 +379,11 @@ if screen_focus % 2 == 1 then
     bang()
     redraw()
     if preset_count < 8 and edit ~= "presets" then
-      --preset_pack()
       preset_count = preset_count + 1
       new_preset_pack(preset_count)
       selected_preset = 1
       grid_redraw()
     elseif preset_count <= 8 and edit == "presets" then
-      --preset_unpack(selected_preset)
       new_preset_unpack(selected_preset)
     end
   elseif n == 2 and z == 0 then
@@ -406,11 +406,7 @@ if screen_focus % 2 == 1 then
           dd = 6
         end
       end
-      --presets = {}
-      --preset_pool = {}
       preset_remove(selected_preset)
-      --preset_count = 0
-      --selected_preset = 0
       for i=1,8 do
         g:led(i,8,0)
       end
@@ -702,7 +698,6 @@ g.key = function(x,y,z)
   end
   if y == 8 and z == 1 then
     if x < 9 and x < preset_count+1 then
-      --preset_unpack(x)
       new_preset_unpack(x)
       selected_preset = x
       grid_redraw()
@@ -710,8 +705,6 @@ g.key = function(x,y,z)
       preset_remove(selected_preset)
       grid_constant()
     elseif x == 15 then
-      --presets = {}
-      --preset_pool = {}
       preset_count = 0
       for i=1,8 do
         g:led(i,8,0)
@@ -719,7 +712,6 @@ g.key = function(x,y,z)
       selected_preset = 0
       grid_redraw()
     elseif x == 16 then
-      --preset_pack()
       if preset_count < 8 then
       preset_count = preset_count + 1
       new_preset_pack(preset_count)
