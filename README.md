@@ -1,4 +1,4 @@
-# less-concepts
+# less_concepts
 PLEASE MAKE SURE YOU RENAME THE FOLDER `less_concepts` WHEN LOADING TO NORNS <3
 
 ![less concepts for monome norns](https://llllllll.co/uploads/default/original/3X/d/1/d19e15fb63831f7883d2660f77c83cc56811a6bc.png)
