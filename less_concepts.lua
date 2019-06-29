@@ -101,7 +101,7 @@ selected_set = 0
 local beatclock = require 'beatclock'
 local clk = beatclock.new()
 clk_midi = midi.connect()
-clk_midi.event = clk.process_midi
+clk_midi.event = function(data) clk:process_midi(data) end
 
 clk.on_select_external = function() clk:reset() end --from nattog
 
