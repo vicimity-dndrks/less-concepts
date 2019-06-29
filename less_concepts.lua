@@ -915,5 +915,6 @@ function loadstate()
       print("invalid data file")
     end
     io.close(file)
+    grid_constant()
   end
 end
