@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.0.1 @dan_derks
+-- v2.0.2 @dan_derks
 -- llllllll.co/t/less-concepts/
 -- 
 -- hold key 1: switch between
