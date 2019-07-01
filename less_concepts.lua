@@ -889,6 +889,16 @@ function savestate()
     io.write(new_preset_pool[i].v1_octave .. "\n")
     io.write(new_preset_pool[i].v2_octave .. "\n")
   end
+  io.write(params:get("bpm") .. "\n")
+  io.write(params:get("clock_out") .. "\n")
+  io.write(params:get("midi ch vox 1") .. "\n")
+  io.write(params:get("midi ch vox 2") .. "\n")
+  io.write(params:get("scale") .. "\n")
+  io.write(params:get("global transpose") .. "\n")
+  for i=1,2 do
+    io.write(params:get("transpose "..i) .. "\n")
+    io.write(params:get("tran prob "..i) .. "\n")
+  end
   io.close(file)
 end
 
@@ -910,6 +920,32 @@ function loadstate()
         new_preset_pool[i].new_high = tonumber(io.read())
         new_preset_pool[i].v1_octave = tonumber(io.read())
         new_preset_pool[i].v2_octave = tonumber(io.read())
+      end
+      load_bpm = tonumber(io.read())
+      load_clock = tonumber(io.read())
+      load_ch_1 = tonumber(io.read())
+      load_ch_2 = tonumber(io.read())
+      load_scale = tonumber(io.read())
+      load_global_trans = tonumber(io.read())
+      load_tran_1 = tonumber(io.read())
+      load_tran_prob_1 = tonumber(io.read())
+      load_tran_2 = tonumber(io.read())
+      load_tran_prob_2 = tonumber(io.read())
+      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and 
+      load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
+        params:set("bpm", 110)
+        params:set("clock_out", 1)
+        params:set("midi ch vox 1", 1)
+        params:set("midi ch vox 2", 1)
+        params:set("scale", 1)
+        params:set("global transpose", 0)
+      else
+        params:set("bpm", load_bpm)
+        params:set("clock_out", load_clock)
+        params:set("midi ch vox 1", load_ch_1)
+        params:set("midi ch vox 2", load_ch_2)
+        params:set("scale", load_scale)
+        params:set("global transpose", load_global_trans)
       end
     else
       print("invalid data file")
