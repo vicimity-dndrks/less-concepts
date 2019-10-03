@@ -23,8 +23,6 @@ function refrain.init()
   params:add_separator()
   params:add_control("engine_input", "engine -> ~ r e f r a i n", controlspec.new(0, 3, "lin", 0, 0, ""))
   params:set_action("engine_input", function(x) audio.level_eng_cut(x) end)
---[[  params:add_control("rec_level", "rec level", controlspec.new(0, 1, "lin", 0, 1, ""))
-  params:set_action("rec_level", function(x) softcut.rec_level(1, x) end)]]--
   params:add_option("note -> param", "note -> param", refrain.scaled, 1)
   params:set_action("note -> param", function(x) note_to_param = refrain.scaled[x] end)
   params:add_separator()
@@ -43,7 +41,7 @@ function refrain.init()
     track[i].rate = 9
     track[i].bit = 1
     track[i].offset = 0
-    track[i].pan = 0.5
+    track[i].pan = 0.0
     audio.level_eng_cut(1)
     softcut.level_input_cut(1, i, 1.0)
     softcut.level_input_cut(2, i, 1.0)
@@ -55,17 +53,17 @@ function refrain.init()
     softcut.loop_start(i, 1)
     softcut.loop_end(i, 9)
     softcut.loop(i, 1)
-    softcut.fade_time(i, 0.2) --or 0.8 idk?
+    softcut.fade_time(i, 0.2)
     softcut.rec(i, 1)
     softcut.rec_level(i, 1)
     softcut.position(i, 1)
     softcut.rec_offset(i, -0.0003)
     softcut.enable(i, 1)
     softcut.filter_dry(i, 0.125)
-	  softcut.filter_fc(i, 1200)
-	  softcut.filter_lp(i, 0)
-	  softcut.filter_bp(i, 1.0)
-	  softcut.filter_rq(i, 2.0)
+    softcut.filter_fc(i, 1200)
+    softcut.filter_lp(i, 0)
+    softcut.filter_bp(i, 1.0)
+    softcut.filter_rq(i, 2.0)
   end
   
   --[[params:add_control("voice_2_buffer","voice 2 buffer reference",controlspec.new(1,2,'lin',1,2,''))
@@ -84,14 +82,18 @@ function refrain.init()
     params:set_action(i .. "filter_fc", function(x) softcut.filter_fc(i, x) end)
     params:add_control(i .. "speed_slew", i .. " speed slew", controlspec.new(0, 1, "lin", 0, 0.0, ""))
     params:set_action(i .. "speed_slew", function(x) softcut.rate_slew_time(i, x) end)
+    params:add_control(i .. "pan_slew", i .. " pan slew", controlspec.new(0.,200.,'lin',0.1,50.0))
+    params:set_action(i .. "pan_slew", function(x) softcut.pan_slew_time(i,x) end)
     params:add_control(i .. "volume", i .. " volume", controlspec.new(0,3,"lin",0,1,""))
     params:set_action(i .. "volume", function(x) softcut.level(i,x)end)
   end
   
   params:add_separator()
   
-  track[1].pan = 0.7
-  track[2].pan = 0.3
+  track[1].pan = -0.7
+  track[2].pan = 0.7
+  
+  params:bang()
 
 end
 
@@ -104,9 +106,9 @@ function refrain.reset(voice,passed)
   end
   if note_to_param == "panning" then
     if voice == 1 then
-      track[voice].pan = math.floor(((((passed-1) / (256-1)) * (100 - 0) + 0)))/100
+      track[voice].pan = (((((passed - 0) * (2)) / (256)) + (-1))*100/100)
     else
-      track[voice].pan = 1-(math.floor(((((passed-1) / (256-1)) * (100 - 0) + 0)))/100)
+      track[voice].pan = (-1)*(((((passed - 0) * (2)) / (256)) + (-1))*100/100)
     end
     softcut.pan(voice,track[voice].pan)
   elseif note_to_param == "rate" then
@@ -139,16 +141,16 @@ function refrain.redraw()
   screen.text("fb1: "..params:string("1feedback").." // fb2: "..params:string("2feedback"))
   screen.move(0,30)
   screen.level(refrain.edit=="ref_offset" and 15 or 2)
-  screen.text("off1: "..track[1].offset.." sec // off2: "..track[2].offset.." sec")
+  screen.text("off1: "..string.format("%.1f", track[1].offset).." sec // off2: "..string.format("%.1f", track[2].offset).." sec")
   screen.move(0,40)
   screen.level(refrain.edit=="ref_rate" and 15 or 2)
   screen.text("rate1: "..speedlist[track[1].rate].." // rate2: "..speedlist[track[2].rate])
   screen.move(0,50)
   screen.level(refrain.edit=="ref_pan" and 15 or 2)
-  screen.text("pan1: "..track[1].pan.." // pan2: "..track[2].pan)
-	screen.move(0,62)
-	screen.level(refrain.edit=="ref_bits" and 15 or 2)
-	for i = 1,8 do
+  screen.text("pan1: "..string.format("%.2f", track[1].pan).." // pan2: "..string.format("%.2f", track[2].pan))
+  screen.move(0,62)
+  screen.level(refrain.edit=="ref_bits" and 15 or 2)
+  for i = 1,8 do
     screen.text(seed_as_binary[9-i])
     screen.move((5*i),62)
   end
@@ -160,8 +162,8 @@ function refrain.redraw()
   screen.font_size(8)
   screen.move(85,62)
   screen.level(refrain.edit=="ref_rec" and 15 or 2)
-	screen.text(state[1].." | "..state[2])
-	screen.update()
+  screen.text(state[1].." | "..state[2])
+  screen.update()
 end
 
 function refrain.rec(i)
@@ -196,7 +198,6 @@ function refrain.enc(n,d)
   if n == 1 then
     refrain.dd = util.clamp(refrain.dd+d,1,6)
     refrain.edit = refrain.edit_foci[refrain.dd]
-    --refrain.edit = util.clamp(refrain.edit+d,1,5)
   end
   if n == 2 or n == 3 then
     if refrain.edit == "ref_feedback" then
@@ -209,7 +210,7 @@ function refrain.enc(n,d)
     elseif refrain.edit == "ref_bits" then
       track[n-1].bit = util.clamp(track[n-1].bit-d,0,8)
     elseif refrain.edit == "ref_pan" then
-      track[n-1].pan = util.clamp(track[n-1].pan-d/10,0,1)
+      track[n-1].pan = util.clamp(track[n-1].pan+d/10,-1,1)
       softcut.pan(n-1, track[n-1].pan)
     end
   end

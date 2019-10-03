@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.0.2 @dan_derks
+-- v2.1 (crow) @dan_derks
 -- llllllll.co/t/less-concepts/
 -- 
 -- hold key 1: switch between
@@ -49,6 +49,15 @@ screen_focus = 1
 selected_preset = 0
 local KEY2 = false
 local KEY3 = false
+voice = {}
+for i = 1,2 do
+  voice[i] = {}
+  voice[i].bit = 0
+  voice[i].octave = 0
+  voice[i].active_notes = {}
+  voice[i].ch = 1
+end
+
 local v1_bit = 0
 local v2_bit = 0
 local v1_octave = 0
@@ -57,8 +66,9 @@ local ch_1 = 1
 local ch_2 = 1
 local semi = 0
 local preset_count = 0
-local active_notes_v1 = {}
-local active_notes_v2 = {}
+active_notes_v1 = {}
+jf_active_notes_v1 = {}
+active_notes_v2 = {}
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 edit_foci = {"seed/rule",
   "lc_gate_probs",
@@ -107,6 +117,9 @@ clk.on_select_external = function() clk:reset() end --from nattog
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
+
+options = {}
+options.OUTPUT = {"audio + midi", "crow cv", "crow ii JF"}
 
 -- this section is all maths + computational events
 
@@ -207,66 +220,76 @@ next_seed = out1+out2+out3+out4+out5+out6+out7+out8
 
 end
 
-local function notes_off_v1()
-  for i=1,#active_notes_v1 do
-    m:note_off(active_notes_v1[i],0,ch_1)
+local function notes_off(n)
+  for i=1,#voice[n].active_notes do
+    m:note_off(voice[n].active_notes[i],0,voice[n].ch)
   end
-  active_notes_v1 = {}
+  voice[n].active_notes = {}
+end
+
+local function notes_off_v1()
+  for i=1,#voice[1].active_notes do
+    m:note_off(voice[1].active_notes[i],0,voice[1].ch)
+  end
+  voice[1].active_notes = {}
 end
 
 local function notes_off_v2()
-  for i=1,#active_notes_v2 do
-    m:note_off(active_notes_v2[i],0,ch_2)
+  for i=1,#voice[2].active_notes do
+    m:note_off(voice[2].active_notes[i],0,voice[2].ch)
   end
-  active_notes_v2 = {}
+  voice[2].active_notes = {}
+end
+
+function jf_notes_off_v1()
+  jf_active_notes_v1 = {}
 end
 
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
+
 local function iterate()
-  notes_off_v1()
-  notes_off_v2()
+  for i = 1,2 do notes_off(i) end
   seed = next_seed
   bang()
   scale(new_low,new_high,seed)
-  if seed_as_binary[v1_bit] == 1 then
-    random_gate[1].comparator = math.random(0,100)
-    if random_gate[1].comparator < random_gate[1].probability then
-      random_note[1].comparator = math.random(0,100)
-      if random_note[1].comparator < random_note[1].probability then
-        random_note[1].add = random_note[1].tran
-      else
-        random_note[1].add = 0
+  for i = 1,2 do
+    if seed_as_binary[voice[i].bit] == 1 then
+      random_gate[i].comparator = math.random(0,100)
+      if random_gate[i].comparator < random_gate[i].probability then
+        random_note[i].comparator = math.random(0,100)
+        if random_note[i].comparator < random_note[i].probability then
+          random_note[i].add = random_note[i].tran
+        else
+          random_note[i].add = 0
+        end
+        if params:get("output") == 1 then
+          engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
+          m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),127,voice[i].ch)
+        elseif params:get("output") == 2 then
+          if i == 1 then
+            crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+1].execute()
+          elseif i == 2 then
+            crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+2].execute()
+          end
+        elseif params:get("output") == 3 then
+          if i == 1 then
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+          elseif i == 2 then
+            jf_counter:start()
+          end
+        end
+        table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
       end
-      engine.noteOn(1,midi_to_hz((notes[coll][scaled])+(48+(v1_octave * 12)+semi+random_note[1].add)),127)
-      m:note_on((notes[coll][scaled])+(36+(v1_octave*12)+semi+random_note[1].add),127,ch_1)
-      table.insert(active_notes_v1,(notes[coll][scaled])+(36+(v1_octave*12)+semi+random_note[1].add))
     end
-  end
-  if seed_as_binary[v2_bit] == 1 then
-    random_gate[2].comparator = math.random(0,100)
-    if random_gate[2].comparator < random_gate[2].probability then
-      random_note[2].comparator = math.random(0,100)
-      if random_note[2].comparator < random_note[2].probability then
-        random_note[2].add = random_note[2].tran
-      else
-        random_note[2].add = 0
-      end
-      engine.noteOn(2,midi_to_hz((notes[coll][scaled])+(48+(v2_octave * 12)+semi+random_note[2].add)),127)
-      m:note_on((notes[coll][scaled])+(36+(v2_octave*12)+semi+random_note[2].add),127,ch_2)
-      table.insert(active_notes_v2,(notes[coll][scaled])+(36+(v2_octave*12)+semi+random_note[2].add))
-    end
-  end
+    
   -- EVENTS FOR R E F R A I N
-  if seed_as_binary[track[1].bit] == 1 then
-    random_gate[3].comparator = math.random(0,100)
-    if random_gate[3].comparator < random_gate[3].probability then
-      refrain.reset(1,pass_to_refrain)
-    end
-  end
-  if seed_as_binary[track[2].bit] == 1 then
-    random_gate[4].comparator = math.random(0,100)
-    if random_gate[4].comparator < random_gate[4].probability then
-      refrain.reset(2,pass_to_refrain)
+    if seed_as_binary[track[i].bit] == 1 then
+      random_gate[i+2].comparator = math.random(0,100)
+      if random_gate[i+2].comparator < random_gate[i+2].probability then
+        refrain.reset(i,pass_to_refrain)
+      end
     end
   end
   redraw()
@@ -280,12 +303,12 @@ end
 
 -- allow user to define the MIDI channel voice 1 sends on
 local function midi_vox_1(channel)
-  ch_1 = channel
+  voice[1].ch = channel
 end
 
 -- allow user to define the MIDI channel voice 2 sends on
 local function midi_vox_2(channel)
-  ch_2 = channel
+  voice[2].ch = channel
 end
 
 -- allow user to define the transposition of voice 1 and voice 2, simultaneous changes to MIDI and Passersby engine
@@ -297,6 +320,12 @@ refrain = include "lib/refrain"
 
 -- everything that happens when the script is first loaded
 function init()
+  jf_position = 0
+  jf_counter = metro.init()
+  jf_counter.time = 0.01
+  jf_counter.count = 1
+  jf_counter.event = jf_count
+  jf_counter:stop()
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
   seed_to_binary()
@@ -304,8 +333,8 @@ function init()
   g = grid.connect()
   g:led(new_low,4,15)
   g:led(new_high,6,15)
-  g:led(v1_octave+13,1,15)
-  g:led(v2_octave+13,2,15)
+  g:led(voice[1].octave+13,1,15)
+  g:led(voice[2].octave+13,2,15)
   grid_redraw()
   g:refresh()
   params:add_number("set", "set", 1,100,1)
@@ -314,15 +343,43 @@ function init()
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   params:add_separator()
   m = midi.connect()
-  --clk.on_step = function() iterate() refrain.iterate() end
   clk.on_step = function() iterate() end
   clk.on_select_internal = function() clk:start() end
   clk.on_select_external = function() print("external") end
   clk:add_clock_params()
-  params:add_number("midi ch vox 1", "midi ch vox 1", 1,16,1)
+  params:add{type = "number", id = "midi_device", name = "midi device", min = 1, max = 4, default = 1, action = function(value)
+    clk_midi.event = nil
+    clk_midi = midi.connect(value)
+    clk_midi.event = function(data) clk:process_midi(data) end
+  end}
+  params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
-  params:add_number("midi ch vox 2", "midi ch vox 2", 1,16,1)
+  params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
   params:set_action("midi ch vox 2", function (x) midi_vox_2(x) end)
+  params:add_separator()
+  params:add_option("enable pullups?", "crow: enable pullups?", {"no","yes"})
+  params:set_action("enable pullups?",
+    function(value)
+      if value == 2 then
+        crow.ii.pullup(true)
+      else
+        crow.ii.pullup(false)
+      end
+      end)
+  params:add{type = "option", id = "output", name = "output",
+    options = options.OUTPUT,
+    action = function(value)
+      if value == 1 then
+        crow.ii.jf.mode(0)
+      elseif value == 2 then
+        crow.ii.jf.mode(0)
+        crow.output[2].action = "{to(5,0),to(0,0.25)}"
+        crow.output[4].action = "{to(5,0),to(0,0.25)}"
+      elseif value == 3 then
+        crow.ii.jf.mode(1)
+      end
+    end}
+  params:add_separator()
   params:add_option("scale", "scale", names, 1)
   params:set_action("scale", function(x) coll = x end)
   params:add_number("global transpose", "global transpose", -24,24,0)
@@ -423,6 +480,14 @@ refrain.key(n,z)
 end
 end
 
+function jf_count()
+  jf_position = jf_position + 1
+  if jf_position == 1 then
+    crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+    jf_position = 0
+  end
+end
+
 -- hardware: encoder interaction
 function enc(n,d)
 if screen_focus % 2 == 1 then
@@ -456,14 +521,14 @@ if screen_focus % 2 == 1 then
           g:refresh()
         end
       elseif edit == "octaves" then
-        v1_octave = math.min(3,(math.max(v1_octave + d,-3)))
+        voice[1].octave = math.min(3,(math.max(voice[1].octave + d,-3)))
         for i=10,16 do
           g:led(i,1,0)
-          g:led(v1_octave+13,1,15)
+          g:led(voice[1].octave+13,1,15)
           g:refresh()
         end
       elseif edit == "lc_bits" then
-        v1_bit = math.min(8,(math.max(v1_bit - d,0)))
+        voice[1].bit = math.min(8,(math.max(voice[1].bit - d,0)))
       elseif edit == "seed/rule" then
         new_seed = math.min(255,(math.max(new_seed + d,0)))
         seed = new_seed
@@ -488,14 +553,14 @@ if screen_focus % 2 == 1 then
           g:refresh()
         end
       elseif edit == "octaves" then
-        v2_octave = math.min(3,(math.max(v2_octave + d,-3)))
+        voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
         for i=10,16 do
           g:led(i,2,0)
-          g:led(v2_octave+13,2,15)
+          g:led(voice[2].octave+13,2,15)
           g:refresh()
         end
       elseif edit == "lc_bits" then
-        v2_bit = math.min(8,(math.max(v2_bit - d,0)))
+        voice[2].bit = math.min(8,(math.max(voice[2].bit - d,0)))
       elseif edit == "seed/rule" then
         new_rule = math.min(255,(math.max(new_rule + d,0)))
         rule = new_rule
@@ -533,10 +598,10 @@ if screen_focus%2 == 1 then
   screen.text("tran prob 1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
   screen.move(0,50)
   screen.level(edit == "octaves" and 15 or 2)
-  screen.text("vox 1 oct: "..v1_octave)
+  screen.text("vox 1 oct: "..voice[1].octave)
   screen.move(57,50)
   screen.level(edit == "octaves" and 15 or 2)
-  screen.text("// vox 2 oct: "..v2_octave)
+  screen.text("// vox 2 oct: "..voice[2].octave)
   screen.move(0,62)
   screen.level(edit == "lc_bits" and 15 or 2)
   for i = 1,8 do
@@ -544,9 +609,9 @@ if screen_focus%2 == 1 then
     screen.move((5*i),62)
   end
   screen.font_size(10)
-  screen.move(40-(5*v1_bit),59)
+  screen.move(40-(5*voice[1].bit),59)
   screen.text("-")
-  screen.move(40-(5*v2_bit),67)
+  screen.move(40-(5*voice[2].bit),67)
   screen.text("-")
   screen.font_size(8)
   screen.level(15)
@@ -578,7 +643,7 @@ g.key = function(x,y,z)
   if y == 1 and x < 9 then
     g:led(x,y,z*15)
     g:refresh()
-    v1_bit = 9-x
+    voice[1].bit = 9-x
     bang()
     redraw()
   end
@@ -587,14 +652,14 @@ g.key = function(x,y,z)
       g:led(i,1,0)
     end
     g:led(x,y,z*15)
-    v1_octave = x-13
+    voice[1].octave = x-13
     redraw()
     g:refresh()
   end
   if y == 2 and x < 9 then
     g:led(x,y,z*15)
     g:refresh()
-    v2_bit = 9-x
+    voice[2].bit = 9-x
     bang()
     redraw()
   end
@@ -603,7 +668,7 @@ g.key = function(x,y,z)
       g:led(i,2,0)
     end
     g:led(x,y,z*15)
-    v2_octave = x-13
+    voice[2].octave = x-13
     redraw()
     g:refresh()
   end
@@ -655,9 +720,9 @@ g.key = function(x,y,z)
       rule = math.random(0,255)
       new_rule = rule
     elseif x == 4 then
-      v1_bit = math.random(0,8)
+      voice[1].bit = math.random(0,8)
     elseif x == 5 then
-      v2_bit = math.random(0,8)
+      voice[2].bit = math.random(0,8)
     elseif x == 7 or x == 8 or x == 10 or x == 11 then
       if x == 7 then
         new_low = math.random(1,29)
@@ -666,14 +731,14 @@ g.key = function(x,y,z)
         new_high = math.random(1,29)
       end
       if x == 10 then
-        v1_octave = math.random(-2,2)
+        voice[1].octave = math.random(-2,2)
       end
       if x == 11 then
-        v2_octave = math.random(-2,2)
+        voice[2].octave = math.random(-2,2)
       end
       g:all(0)
-      g:led(v1_octave+13,1,15)
-      g:led(v2_octave+13,2,15)
+      g:led(voice[1].octave+13,1,15)
+      g:led(voice[2].octave+13,2,15)
       if new_low < 17 then
         g:led(new_low,4,15)
       else
@@ -685,9 +750,9 @@ g.key = function(x,y,z)
         g:led(new_high-16,7,15)
       end
     elseif x == 10 then
-      v1_octave = math.random(-2,2)
+      voice[1].octave = math.random(-2,2)
     elseif x == 11 then
-      v2_octave = math.random(-2,2)
+      voice[2].octave = math.random(-2,2)
     elseif x == 16 then
       randomize_all()
     end
@@ -727,11 +792,11 @@ function grid_redraw()
     g:led(i,1,0)
     g:led(i,2,0)
   end
-  if seed_as_binary[v1_bit] == 1 then
-    g:led(9-v1_bit,1,15)
+  if seed_as_binary[voice[1].bit] == 1 then
+    g:led(9-voice[1].bit,1,15)
   end
-  if seed_as_binary[v2_bit] == 1 then
-    g:led(9-v2_bit,2,15)
+  if seed_as_binary[voice[2].bit] == 1 then
+    g:led(9-voice[2].bit,2,15)
   end
   g:led(1,3,4)
   g:led(2,3,4)
@@ -749,15 +814,15 @@ function grid_redraw()
   g:led(14,8,2)
   g:led(15,8,4)
   g:led(16,8,6)
-  g:led(v1_octave+13,1,15)
-  g:led(v2_octave+13,2,15)
+  g:led(voice[1].octave+13,1,15)
+  g:led(voice[2].octave+13,2,15)
   g:refresh()
 end
 
 function grid_constant()
   g:all(0)
-  g:led(v1_octave+13,1,15)
-  g:led(v2_octave+13,2,15)
+  g:led(voice[1].octave+13,1,15)
+  g:led(voice[2].octave+13,2,15)
   if new_low < 17 then
     g:led(new_low,4,15)
   elseif new_low > 16 then
@@ -780,12 +845,12 @@ function randomize_all()
   new_seed = seed
   rule = math.random(0,255)
   new_rule = rule
-  v1_bit = math.random(0,8)
-  v2_bit = math.random(0,8)
+  voice[1].bit = math.random(0,8)
+  voice[2].bit = math.random(0,8)
   new_low = math.random(1,29)
   new_high = math.random(1,29)
-  v1_octave = math.random(-2,2)
-  v2_octave = math.random(-2,2)
+  voice[1].octave = math.random(-2,2)
+  voice[2].octave = math.random(-2,2)
   bang()
   redraw()
   grid_constant()
@@ -809,11 +874,11 @@ function randomize_some()
       params:set("tran prob "..i, math.random(0,100))
     end
   elseif edit == "octaves" then
-    v1_octave = math.random(-2,2)
-    v2_octave = math.random(-2,2)
+    voice[1].octave = math.random(-2,2)
+    voice[2].octave = math.random(-2,2)
   elseif edit == "lc_bits" then
-    v1_bit = math.random(0,8)
-    v2_bit = math.random(0,8)
+    voice[1].bit = math.random(0,8)
+    voice[2].bit = math.random(0,8)
   elseif edit == "presets" then
     randomize_all()
   end
@@ -827,12 +892,12 @@ end
 function new_preset_pack(set)
   new_preset_pool[set].seed = new_seed
   new_preset_pool[set].rule = new_rule
-  new_preset_pool[set].v1_bit = v1_bit
-  new_preset_pool[set].v2_bit = v2_bit
+  new_preset_pool[set].v1_bit = voice[1].bit
+  new_preset_pool[set].v2_bit = voice[2].bit
   new_preset_pool[set].new_low = new_low
   new_preset_pool[set].new_high = new_high
-  new_preset_pool[set].v1_octave = v1_octave
-  new_preset_pool[set].v2_octave = v2_octave
+  new_preset_pool[set].v1_octave = voice[1].octave
+  new_preset_pool[set].v2_octave = voice[2].octave
 end
 
 function new_preset_unpack(set)
@@ -840,12 +905,12 @@ function new_preset_unpack(set)
   seed = new_seed
   new_rule = new_preset_pool[set].rule
   rule = new_rule
-  v1_bit = new_preset_pool[set].v1_bit
-  v2_bit = new_preset_pool[set].v2_bit
+  voice[1].bit = new_preset_pool[set].v1_bit
+  voice[2].bit = new_preset_pool[set].v2_bit
   new_low = new_preset_pool[set].new_low
   new_high = new_preset_pool[set].new_high
-  v1_octave = new_preset_pool[set].v1_octave
-  v2_octave = new_preset_pool[set].v2_octave
+  voice[1].octave = new_preset_pool[set].v1_octave
+  voice[2].octave = new_preset_pool[set].v2_octave
   bang()
   redraw()
   grid_constant()
@@ -946,6 +1011,10 @@ function loadstate()
         params:set("midi ch vox 2", load_ch_2)
         params:set("scale", load_scale)
         params:set("global transpose", load_global_trans)
+        params:set("transpose 1", load_tran_1)
+        params:set("transpose 2", load_tran_2)
+        params:set("tran prob 1", load_tran_prob_1)
+        params:set("tran prob 2", load_tran_prob_2)
       end
     else
       print("invalid data file")
