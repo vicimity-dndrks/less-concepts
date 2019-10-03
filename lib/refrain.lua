@@ -66,9 +66,6 @@ function refrain.init()
     softcut.filter_rq(i, 2.0)
   end
   
-  --[[params:add_control("voice_2_buffer","voice 2 buffer reference",controlspec.new(1,2,'lin',1,2,''))
-  params:set_action("voice_2_buffer", function(x) softcut.buffer(2,x) end)]]--
-  
   for i = 1,2 do
     params:add_control(i .. "feedback", i .. " feedback", controlspec.new(0, 1, "lin", 0, .2, ""))
     params:set_action(i .. "feedback", function(x)
@@ -98,7 +95,6 @@ function refrain.init()
 end
 
 function refrain.reset(voice,passed)
-  -- follow this format: math.floor(((((passed-1) / (256-1)) * (HI - LO) + LO)))
   if speedlist[track[voice].rate] < 0 then
     softcut.position(voice,1.5 + track[voice].offset)
   else
@@ -233,7 +229,7 @@ function refrain.randomize()
     end
   elseif refrain.edit == "ref_pan" then
     for i = 1,2 do
-      track[i].pan = math.random(0,10)/10
+      track[i].pan = math.random(-10,10)/10
       softcut.pan(i, track[i].pan)
     end
   elseif refrain.edit == "ref_bits" then

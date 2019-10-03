@@ -45,11 +45,11 @@ local new_high = 14
 local coll = 1
 local new_seed = seed
 local new_rule = rule
-screen_focus = 1
-selected_preset = 0
+local screen_focus = 1
+local selected_preset = 0
 local KEY2 = false
 local KEY3 = false
-voice = {}
+local voice = {}
 for i = 1,2 do
   voice[i] = {}
   voice[i].bit = 0
@@ -66,9 +66,9 @@ local ch_1 = 1
 local ch_2 = 1
 local semi = 0
 local preset_count = 0
-active_notes_v1 = {}
-jf_active_notes_v1 = {}
-active_notes_v2 = {}
+local active_notes_v1 = {}
+local jf_active_notes_v1 = {}
+local active_notes_v2 = {}
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 edit_foci = {"seed/rule",
   "lc_gate_probs",
@@ -78,7 +78,7 @@ edit_foci = {"seed/rule",
   "lc_bits",
   "presets"}
 local edit = "seed/rule"
-dd = 0
+local dd = 0
 random_gate = {}
 for i = 1,4 do
   random_gate[i] = {}
@@ -106,7 +106,7 @@ for i = 1,9 do
   new_preset_pool[i].v1_octave = {}
   new_preset_pool[i].v2_octave = {}
 end
-selected_set = 0
+local selected_set = 0
 
 local beatclock = require 'beatclock'
 local clk = beatclock.new()
@@ -118,7 +118,7 @@ clk.on_select_external = function() clk:reset() end --from nattog
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
 
-options = {}
+local options = {}
 options.OUTPUT = {"audio + midi", "crow cv", "crow ii JF"}
 
 -- this section is all maths + computational events
@@ -241,7 +241,7 @@ local function notes_off_v2()
   voice[2].active_notes = {}
 end
 
-function jf_notes_off_v1()
+local function jf_notes_off_v1()
   jf_active_notes_v1 = {}
 end
 
