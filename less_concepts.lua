@@ -67,7 +67,6 @@ local ch_2 = 1
 local semi = 0
 local preset_count = 0
 local active_notes_v1 = {}
-local jf_active_notes_v1 = {}
 local active_notes_v2 = {}
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 edit_foci = {"seed/rule",
@@ -241,10 +240,6 @@ local function notes_off_v2()
   voice[2].active_notes = {}
 end
 
-local function jf_notes_off_v1()
-  jf_active_notes_v1 = {}
-end
-
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
 
 local function iterate()
@@ -277,7 +272,7 @@ local function iterate()
           if i == 1 then
             crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
           elseif i == 2 then
-            jf_counter:start()
+            jf_note_spacer:start()
           end
         end
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
@@ -320,12 +315,12 @@ refrain = include "lib/refrain"
 
 -- everything that happens when the script is first loaded
 function init()
-  jf_position = 0
-  jf_counter = metro.init()
-  jf_counter.time = 0.01
-  jf_counter.count = 1
-  jf_counter.event = jf_count
-  jf_counter:stop()
+  jf_counter = 0
+  jf_note_spacer = metro.init()
+  jf_note_spacer.time = 0.01
+  jf_note_spacer.count = 1
+  jf_note_spacer.event = jf_spacer
+  jf_note_spacer:stop()
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
   seed_to_binary()
@@ -480,11 +475,11 @@ refrain.key(n,z)
 end
 end
 
-function jf_count()
-  jf_position = jf_position + 1
-  if jf_position == 1 then
+function jf_spacer()
+  jf_counter = jf_counter + 1
+  if jf_counter == 1 then
     crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
-    jf_position = 0
+    jf_counter = 0
   end
 end
 
