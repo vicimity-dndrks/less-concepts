@@ -315,7 +315,6 @@ refrain = include "lib/refrain"
 
 -- everything that happens when the script is first loaded
 function init()
-  jf_counter = 0
   jf_note_spacer = metro.init()
   jf_note_spacer.time = 0.01
   jf_note_spacer.count = 1
@@ -476,11 +475,7 @@ end
 end
 
 function jf_spacer()
-  jf_counter = jf_counter + 1
-  if jf_counter == 1 then
-    crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
-    jf_counter = 0
-  end
+  crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
 end
 
 -- hardware: encoder interaction
