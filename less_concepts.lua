@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.1 (crow) @dan_derks
+-- v2.1.1 (crow) @dan_derks
 -- llllllll.co/t/less-concepts/
 -- 
 -- hold key 1: switch between
@@ -35,7 +35,6 @@
 -- seek.
 -- think.
 -- discover.
-
 
 local seed = 0
 local rule = 0
@@ -107,8 +106,8 @@ for i = 1,9 do
 end
 local selected_set = 0
 
-local beatclock = require 'beatclock'
-local clk = beatclock.new()
+local beatclock = include "lib/beatclock-crow"
+clk = beatclock.new()
 clk_midi = midi.connect()
 clk_midi.event = function(data) clk:process_midi(data) end
 
@@ -118,7 +117,7 @@ engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
 
 local options = {}
-options.OUTPUT = {"audio + midi", "crow cv", "crow ii JF"}
+options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF"}
 
 -- this section is all maths + computational events
 
@@ -262,13 +261,21 @@ local function iterate()
           m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),127,voice[i].ch)
         elseif params:get("output") == 2 then
           if i == 1 then
+            crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[2].execute()
+          elseif i == 2 then
+            crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[2].execute()
+          end
+        elseif params:get("output") == 3 then
+          if i == 1 then
             crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
             crow.output[i+1].execute()
           elseif i == 2 then
             crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
             crow.output[i+2].execute()
           end
-        elseif params:get("output") == 3 then
+        elseif params:get("output") == 4 then
           if i == 1 then
             crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
           elseif i == 2 then
@@ -289,6 +296,12 @@ local function iterate()
   end
   redraw()
   grid_redraw()
+end
+
+function change(s)
+  if s == 1 then
+    iterate()
+  end
 end
 
 -- convert midi note to hz for Passersby engine
@@ -338,8 +351,12 @@ function init()
   params:add_separator()
   m = midi.connect()
   clk.on_step = function() iterate() end
-  clk.on_select_internal = function() clk:start() end
-  clk.on_select_external = function() print("external") end
+  clk.on_select_internal = function() clk:start() crow.input[2].mode("none") end
+  clk.on_select_external = function() print("external MIDI") crow.input[2].mode("none") end
+  clk.on_select_crow = function()
+    crow.input[2].mode("change",2,0.1,"both")
+    crow.input[2].change = change
+  end
   clk:add_clock_params()
   params:add{type = "number", id = "midi_device", name = "midi device", min = 1, max = 4, default = 1, action = function(value)
     clk_midi.event = nil
@@ -368,8 +385,11 @@ function init()
       elseif value == 2 then
         crow.ii.jf.mode(0)
         crow.output[2].action = "{to(5,0),to(0,0.25)}"
-        crow.output[4].action = "{to(5,0),to(0,0.25)}"
       elseif value == 3 then
+        crow.ii.jf.mode(0)
+        crow.output[2].action = "{to(5,0),to(0,0.25)}"
+        crow.output[4].action = "{to(5,0),to(0,0.25)}"
+      elseif value == 4 then
         crow.ii.jf.mode(1)
       end
     end}
