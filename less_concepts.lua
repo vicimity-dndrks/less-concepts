@@ -117,7 +117,7 @@ engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
 
 local options = {}
-options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF"}
+options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF"}
 
 -- this section is all maths + computational events
 
@@ -281,6 +281,16 @@ local function iterate()
           elseif i == 2 then
             jf_note_spacer:start()
           end
+         elseif params:get("output") == 5 then
+          if i == 1 then
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+            crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+1].execute()
+          elseif i == 2 then
+            jf_note_spacer:start()
+            crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+2].execute()
+          end
         end
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
       end
@@ -391,6 +401,10 @@ function init()
         crow.output[4].action = "{to(5,0),to(0,0.25)}"
       elseif value == 4 then
         crow.ii.jf.mode(1)
+       elseif value == 5 then
+        crow.ii.jf.mode(1)
+        crow.output[2].action = "{to(5,0),to(0,0.25)}"
+        crow.output[4].action = "{to(5,0),to(0,0.25)}"
       end
     end}
   params:add_separator()
