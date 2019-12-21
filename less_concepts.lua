@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.1.1 (crow) @dan_derks
+-- v2.1.2 (crow) @dan_derks
 -- llllllll.co/t/less-concepts/
 -- 
 -- hold key 1: switch between
@@ -117,7 +117,7 @@ engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
 
 local options = {}
-options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF"}
+options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF"}
 
 -- this section is all maths + computational events
 
@@ -279,7 +279,28 @@ local function iterate()
           if i == 1 then
             crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
           elseif i == 2 then
-            jf_note_spacer:start()
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+          end
+         elseif params:get("output") == 5 then
+          if i == 1 then
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+            crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+1].execute()
+          elseif i == 2 then
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+            crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+2].execute()
+          end
+        elseif params:get("output") == 6 then
+          engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
+          if i == 1 then
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+            crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+1].execute()
+          elseif i == 2 then
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+            crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[i+2].execute()
           end
         end
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
@@ -328,11 +349,6 @@ refrain = include "lib/refrain"
 
 -- everything that happens when the script is first loaded
 function init()
-  jf_note_spacer = metro.init()
-  jf_note_spacer.time = 0.01
-  jf_note_spacer.count = 1
-  jf_note_spacer.event = jf_spacer
-  jf_note_spacer:stop()
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
   seed_to_binary()
@@ -368,15 +384,6 @@ function init()
   params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
   params:set_action("midi ch vox 2", function (x) midi_vox_2(x) end)
   params:add_separator()
-  params:add_option("enable pullups?", "crow: enable pullups?", {"no","yes"})
-  params:set_action("enable pullups?",
-    function(value)
-      if value == 2 then
-        crow.ii.pullup(true)
-      else
-        crow.ii.pullup(false)
-      end
-      end)
   params:add{type = "option", id = "output", name = "output",
     options = options.OUTPUT,
     action = function(value)
@@ -391,6 +398,14 @@ function init()
         crow.output[4].action = "{to(5,0),to(0,0.25)}"
       elseif value == 4 then
         crow.ii.jf.mode(1)
+      elseif value == 5 then
+        crow.ii.jf.mode(1)
+        crow.output[2].action = "{to(5,0),to(0,0.25)}"
+        crow.output[4].action = "{to(5,0),to(0,0.25)}"
+      elseif value == 6 then
+        crow.ii.jf.mode(1)
+        crow.output[2].action = "{to(5,0),to(0,0.25)}"
+        crow.output[4].action = "{to(5,0),to(0,0.25)}"
       end
     end}
   params:add_separator()
@@ -492,10 +507,6 @@ elseif screen_focus % 2 == 0 then
 -- PUT OTHER SCRIPT HARDWARE CONTROLS HERE
 refrain.key(n,z)
 end
-end
-
-function jf_spacer()
-  crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
 end
 
 -- hardware: encoder interaction
