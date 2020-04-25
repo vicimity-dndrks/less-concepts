@@ -106,12 +106,14 @@ for i = 1,9 do
 end
 local selected_set = 0
 
-local beatclock = include "lib/beatclock-crow"
+--[[
+  local beatclock = include "lib/beatclock-crow"
 clk = beatclock.new()
 clk_midi = midi.connect()
 clk_midi.event = function(data) clk:process_midi(data) end
 
 clk.on_select_external = function() clk:reset() end --from nattog
+--]]
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -366,6 +368,15 @@ function init()
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   params:add_separator()
   m = midi.connect()
+
+  function pulse()
+    while true do
+      clock.sync(1/4)
+      iterate()
+    end
+  end
+
+  --[[
   clk.on_step = function() iterate() end
   clk.on_select_internal = function() clk:start() crow.input[2].mode("none") end
   clk.on_select_external = function() print("external MIDI") crow.input[2].mode("none") end
@@ -379,6 +390,8 @@ function init()
     clk_midi = midi.connect(value)
     clk_midi.event = function(data) clk:process_midi(data) end
   end}
+  --]]
+  
   params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
   params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
@@ -447,7 +460,9 @@ notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,
 
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 
-clk:start()
+--clk:start()
+
+clock.run(pulse)
 
 end
 
@@ -975,8 +990,10 @@ function savestate()
     io.write(new_preset_pool[i].v1_octave .. "\n")
     io.write(new_preset_pool[i].v2_octave .. "\n")
   end
-  io.write(params:get("bpm") .. "\n")
-  io.write(params:get("clock_out") .. "\n")
+  --io.write(params:get("bpm") .. "\n")
+  --io.write(params:get("clock_out") .. "\n")
+  io.write(params:get("clock_tempo") .. "\n")
+  io.write(params:get("clock_midi_out") .. "\n")
   io.write(params:get("midi ch vox 1") .. "\n")
   io.write(params:get("midi ch vox 2") .. "\n")
   io.write(params:get("scale") .. "\n")
@@ -1019,15 +1036,19 @@ function loadstate()
       load_tran_prob_2 = tonumber(io.read())
       if load_bpm == nil and load_clock == nil and load_ch_1 == nil and 
       load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
-        params:set("bpm", 110)
-        params:set("clock_out", 1)
+        --params:set("bpm", 110)
+        --params:set("clock_out", 1)
+        params:set("clock_tempo", 110)
+        params:set("clock_midi_out", 1)
         params:set("midi ch vox 1", 1)
         params:set("midi ch vox 2", 1)
         params:set("scale", 1)
         params:set("global transpose", 0)
       else
-        params:set("bpm", load_bpm)
-        params:set("clock_out", load_clock)
+        --params:set("bpm", load_bpm)
+        --params:set("clock_out", load_clock)
+        params:set("clock_tempo", load_bpm)
+        params:set("clock_midi_out", load_clock)
         params:set("midi ch vox 1", load_ch_1)
         params:set("midi ch vox 2", load_ch_2)
         params:set("scale", load_scale)
