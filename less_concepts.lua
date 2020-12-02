@@ -2,7 +2,7 @@
 -- cellular automata sequencer
 -- v2.1.2 (crow) @dan_derks
 -- llllllll.co/t/less-concepts/
--- 
+--
 -- hold key 1: switch between
 -- less concepts +
 -- ~ r e f r a i n
@@ -23,6 +23,7 @@
 --
 -- plug in grid
 -- (1,1) to (8,2): bits
+-- (1, 9) and (2, 9) : mutes bits
 -- (10,1) to (16,2): octaves
 -- (1,3) to (16,3): randomize
 -- (1,4) to (16,5): low
@@ -105,6 +106,9 @@ for i = 1,9 do
   new_preset_pool[i].v2_octave = {}
 end
 local selected_set = 0
+
+local new_clockdiv = 1
+local new_sel_clockdiv = 3
 
 --[[
   local beatclock = include "lib/beatclock-crow"
@@ -308,7 +312,7 @@ local function iterate()
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
       end
     end
-    
+
   -- EVENTS FOR R E F R A I N
     if seed_as_binary[track[i].bit] == 1 then
       random_gate[i+2].comparator = math.random(0,100)
@@ -371,7 +375,7 @@ function init()
 
   function pulse()
     while true do
-      clock.sync(1/4)
+      clock.sync(1/new_clockdiv)
       iterate()
     end
   end
@@ -391,7 +395,7 @@ function init()
     clk_midi.event = function(data) clk:process_midi(data) end
   end}
   --]]
-  
+
   params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
   params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
@@ -638,6 +642,11 @@ if screen_focus%2 == 1 then
   screen.move(57,50)
   screen.level(edit == "octaves" and 15 or 2)
   screen.text("// vox 2 oct: "..voice[2].octave)
+
+  --ADDED: UI for clock divider
+  screen.move(53,62)
+  screen.text("1/".. math.floor(4 * new_clockdiv))
+
   screen.move(0,62)
   screen.level(edit == "lc_bits" and 15 or 2)
   for i = 1,8 do
@@ -676,7 +685,35 @@ end
 g = grid.connect()
 -- hardware: grid event (eg 'what happens when a button is pressed')
 g.key = function(x,y,z)
-  if y == 1 and x < 9 then
+
+  -- ADDED: first steps to alter clock divider for nice interaction
+    if y == 8 and x > 8 and x < 14 then
+      if y == 8 and x == 11 and z == 1 then
+        new_clockdiv = 1
+        new_sel_clockdiv = 3
+      end
+
+      if y == 8 and x == 10 and z == 1then
+        new_clockdiv = 0.5
+        new_sel_clockdiv = 2
+      end
+
+      if y == 8 and x == 9 and z == 1then
+        new_clockdiv = 0.25
+        new_sel_clockdiv = 1
+      end
+
+      if y == 8 and x == 12 and z == 1then
+        new_clockdiv = 2
+        new_sel_clockdiv = 4
+      end
+
+      if y == 8 and x == 13 and z == 1then
+        new_clockdiv = 4
+        new_sel_clockdiv = 5
+      end
+    end
+  if y == 1 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
     g:refresh()
     voice[1].bit = 9-x
@@ -692,7 +729,7 @@ g.key = function(x,y,z)
     redraw()
     g:refresh()
   end
-  if y == 2 and x < 9 then
+  if y == 2 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
     g:refresh()
     voice[2].bit = 9-x
@@ -853,6 +890,17 @@ function grid_redraw()
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   g:refresh()
+
+
+
+  -- ADDED: redraw the led for clockdiv = 1/4
+  for i=9, 13 do
+    g:led(i, 8, 4)
+  end
+  g:led(8 + new_sel_clockdiv, 8, 15)
+
+
+
 end
 
 function grid_constant()
@@ -958,7 +1006,7 @@ function preset_remove(set)
     new_preset_pool[i].rule = new_preset_pool[i+1].rule
     new_preset_pool[i].v1_bit = new_preset_pool[i+1].v1_bit
     new_preset_pool[i].v2_bit = new_preset_pool[i+1].v2_bit
-    new_preset_pool[i].new_low = new_preset_pool[i+1].new_low 
+    new_preset_pool[i].new_low = new_preset_pool[i+1].new_low
     new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
     new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
     new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
@@ -1034,7 +1082,7 @@ function loadstate()
       load_tran_prob_1 = tonumber(io.read())
       load_tran_2 = tonumber(io.read())
       load_tran_prob_2 = tonumber(io.read())
-      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and 
+      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and
       load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
         --params:set("bpm", 110)
         --params:set("clock_out", 1)
