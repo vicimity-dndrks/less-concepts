@@ -104,6 +104,7 @@ for i = 1,9 do
   new_preset_pool[i].new_high = {}
   new_preset_pool[i].v1_octave = {}
   new_preset_pool[i].v2_octave = {}
+  new_preset_pool[i].new_clockdiv = {}
 end
 local selected_set = 0
 
@@ -450,8 +451,8 @@ notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,
           {0,1,3,5,7,8,10,12,13,15,17,19,20,22,24,25,27,29,31,32,34,36,37,39,41,43,44,46,48},
           {0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31,33,35,36,38,40,42,43,45,47,48},
           {0,2,4,5,7,9,10,12,14,16,17,19,21,22,24,26,28,29,31,33,34,36,38,40,41,43,45,46,48},
-          {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67},
           {0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,43,45,48,50,52,55,57,60,62,64,67},
+          {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67},
           {0,2,5,7,10,12,14,17,19,22,24,26,29,31,34,36,38,41,43,46,48,50,53,55,58,60,62,65,67},
           {0,3,5,8,10,12,15,17,20,22,24,27,29,32,34,36,39,41,44,46,48,51,53,56,58,60,63,65,68},
           {0,2,5,7,9,12,14,17,19,21,24,26,29,31,33,36,38,41,43,45,48,50,53,55,57,60,62,65,67},
@@ -883,6 +884,9 @@ function grid_redraw()
   for i=1,preset_count do
     g:led(i,8,6)
   end
+
+
+
   g:led(selected_preset,8,15)
   g:led(14,8,2)
   g:led(15,8,4)
@@ -897,6 +901,7 @@ function grid_redraw()
   for i=9, 13 do
     g:led(i, 8, 4)
   end
+  print(new_sel_clockdiv)
   g:led(8 + new_sel_clockdiv, 8, 15)
 
 
@@ -982,6 +987,8 @@ function new_preset_pack(set)
   new_preset_pool[set].new_high = new_high
   new_preset_pool[set].v1_octave = voice[1].octave
   new_preset_pool[set].v2_octave = voice[2].octave
+  new_preset_pool[set].new_clockdiv = new_clockdiv
+  new_preset_pool[set].new_sel_clockdiv = new_sel_clockdiv
 end
 
 function new_preset_unpack(set)
@@ -995,6 +1002,8 @@ function new_preset_unpack(set)
   new_high = new_preset_pool[set].new_high
   voice[1].octave = new_preset_pool[set].v1_octave
   voice[2].octave = new_preset_pool[set].v2_octave
+  new_clockdiv = new_preset_pool[set].new_clockdiv
+  new_sel_clockdiv = new_preset_pool[set].new_sel_clockdiv
   bang()
   redraw()
   grid_constant()
@@ -1010,6 +1019,8 @@ function preset_remove(set)
     new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
     new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
     new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
+    new_preset_pool[i].new_clockdiv = new_preset_pool[i+1].new_clockdiv
+    new_preset_pool[i].new_sel_clockdiv = new_preset_pool[i+1].new_sel_clockdiv
   end
   if selected_preset > 1 and selected_preset < preset_count then
     selected_preset = selected_preset
@@ -1037,6 +1048,7 @@ function savestate()
     io.write(new_preset_pool[i].new_high .. "\n")
     io.write(new_preset_pool[i].v1_octave .. "\n")
     io.write(new_preset_pool[i].v2_octave .. "\n")
+    io.write(new_preset_pool[i].new_clockdiv .. "\n")
   end
   --io.write(params:get("bpm") .. "\n")
   --io.write(params:get("clock_out") .. "\n")
@@ -1071,6 +1083,7 @@ function loadstate()
         new_preset_pool[i].new_high = tonumber(io.read())
         new_preset_pool[i].v1_octave = tonumber(io.read())
         new_preset_pool[i].v2_octave = tonumber(io.read())
+        new_preset_pool[i].new_clockdiv = tonumber(io.read())
       end
       load_bpm = tonumber(io.read())
       load_clock = tonumber(io.read())
