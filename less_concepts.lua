@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.1.2 (crow) @dan_derks
+-- v2.1.2 (crow) @dan_derks (v.2.1.3b (w/syn + clock + mutes) @linusschrab)
 -- llllllll.co/t/less-concepts/
 -- 
 -- hold key 1: switch between
@@ -23,6 +23,7 @@
 --
 -- plug in grid
 -- (1,1) to (8,2): bits
+-- (1, 9) and (2, 9) : mutes bits
 -- (10,1) to (16,2): octaves
 -- (1,3) to (16,3): randomize
 -- (1,4) to (16,5): low
@@ -31,13 +32,14 @@
 -- (15,8): clear all snapshots
 -- (14,8): clear selected
 -- (1,8) to (8,8): snapshots
+-- (9,8) to (13,8): clock divisions
 --
 -- seek.
 -- think.
 -- discover.
 
-local seed = 0
-local rule = 0
+local seed = 36
+local rule = 30
 local next_seed = nil
 local new_low = 1
 local new_high = 14
@@ -74,7 +76,9 @@ edit_foci = {"seed/rule",
   "rand_prob",
   "octaves",
   "lc_bits",
-  "presets"}
+  "clock",
+  "presets"
+}
 local edit = "seed/rule"
 local dd = 0
 random_gate = {}
@@ -106,6 +110,9 @@ for i = 1,9 do
 end
 local selected_set = 0
 
+local new_clockdiv = 1
+local new_sel_clockdiv = 3
+
 --[[
   local beatclock = include "lib/beatclock-crow"
 clk = beatclock.new()
@@ -119,7 +126,8 @@ engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
 
 local options = {}
-options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF"}
+options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF", "crow w/syn"}
+
 
 -- this section is all maths + computational events
 
@@ -304,6 +312,12 @@ local function iterate()
             crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
             crow.output[i+2].execute()
           end
+          elseif params:get("output") == 7 then
+            if i == 1 then
+              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
+            elseif i == 2 then
+              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12 ..", " .. 5 .. ")")
+          end
         end
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
       end
@@ -349,8 +363,78 @@ end
 
 refrain = include "lib/refrain"
 
+function add_params()
+  params:add_separator("W/Syn")
+  params:add {
+    type = "option",
+    id = "wsyn_ar_mode",
+    name = "AR mode",
+    options = {"off", "on"},
+    action = function(val) crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_curve",
+    name = "Curve",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.curve(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_ramp",
+    name = "Ramp",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.ramp(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_index",
+    name = "FM index",
+    controlspec = controlspec.new(0, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.fm_index(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_env",
+    name = "FM env",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.fm_env(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_ratio_num",
+    name = "FM ratio numerator",
+    controlspec = controlspec.new(1, 20, "lin", 1, 2),
+    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. val .. "," .. params:get("wsyn_fm_ratio_den") .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_fm_ratio_den",
+    name = "FM ratio denominator",
+    controlspec = controlspec.new(1, 20, "lin", 1, 1),
+    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. params:get("wsyn_fm_ratio_num") .. "," .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_lpg_time",
+    name = "LPG time",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.lpg_time(" .. val .. ")") end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_lpg_symmetry",
+    name = "LPG symmetry",
+    controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
+    action = function(val) crow.send("ii.wsyn.lpg_symmetry(" .. val .. ")") end
+  }
+end
+
 -- everything that happens when the script is first loaded
 function init()
+  randomize_all()
+  --voice[1].bit = 1
+  --voice[2].bit = 8
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
   seed_to_binary()
@@ -371,7 +455,7 @@ function init()
 
   function pulse()
     while true do
-      clock.sync(1/4)
+      clock.sync(1/new_clockdiv)
       iterate()
     end
   end
@@ -419,8 +503,12 @@ function init()
         crow.ii.jf.mode(1)
         crow.output[2].action = "{to(5,0),to(0,0.25)}"
         crow.output[4].action = "{to(5,0),to(0,0.25)}"
+      elseif value == 7 then
+        crow.ii.jf.mode(0)
       end
     end}
+  add_params()
+
   params:add_separator()
   params:add_option("scale", "scale", names, 1)
   params:set_action("scale", function(x) coll = x end)
@@ -446,8 +534,8 @@ notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,
           {0,1,3,5,7,8,10,12,13,15,17,19,20,22,24,25,27,29,31,32,34,36,37,39,41,43,44,46,48},
           {0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31,33,35,36,38,40,42,43,45,47,48},
           {0,2,4,5,7,9,10,12,14,16,17,19,21,22,24,26,28,29,31,33,34,36,38,40,41,43,45,46,48},
-          {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67},
           {0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,43,45,48,50,52,55,57,60,62,64,67},
+          {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67},
           {0,2,5,7,10,12,14,17,19,22,24,26,29,31,34,36,38,41,43,46,48,50,53,55,58,60,62,65,67},
           {0,3,5,8,10,12,15,17,20,22,24,27,29,32,34,36,39,41,44,46,48,51,53,56,58,60,63,65,68},
           {0,2,5,7,9,12,14,17,19,21,24,26,29,31,33,36,38,41,43,45,48,50,53,55,57,60,62,65,67},
@@ -459,6 +547,8 @@ notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,
           {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28} }
 
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
+
+params:set("wsyn_ar_mode", 2)
 
 --clk:start()
 
@@ -529,10 +619,10 @@ function enc(n,d)
 if screen_focus % 2 == 1 then
   if n == 1 then
     if preset_count > 0 then
-      dd = util.clamp(dd+d,1,7)
+      dd = util.clamp(dd+d,1,8)
       edit = edit_foci[dd]
     else
-      dd = util.clamp(dd+d,1,6)
+      dd = util.clamp(dd+d,1,7)
       edit = edit_foci[dd]
     end
   end
@@ -570,6 +660,12 @@ if screen_focus % 2 == 1 then
         seed = new_seed
         rule = new_rule
         bang()
+      elseif edit == "clock" then
+        local clockdivisions = {0.25, 0.5, 1, 2, 4}
+        new_sel_clockdiv = util.clamp(new_sel_clockdiv + d, 1, 5)
+        new_clockdiv = clockdivisions[new_sel_clockdiv]
+        redraw()
+        print(tempclockdiv)
       end
     elseif n == 3 then
       if edit == "lc_gate_probs" then
@@ -638,6 +734,11 @@ if screen_focus%2 == 1 then
   screen.move(57,50)
   screen.level(edit == "octaves" and 15 or 2)
   screen.text("// vox 2 oct: "..voice[2].octave)
+  --ADDED: UI for clock divider
+  screen.move(53,62)
+  screen.level(edit == "clock" and 15 or 2)
+  screen.text("1/".. math.floor(4 * new_clockdiv))
+  
   screen.move(0,62)
   screen.level(edit == "lc_bits" and 15 or 2)
   for i = 1,8 do
@@ -676,7 +777,35 @@ end
 g = grid.connect()
 -- hardware: grid event (eg 'what happens when a button is pressed')
 g.key = function(x,y,z)
-  if y == 1 and x < 9 then
+
+  -- ADDED: first steps to alter clock divider for nice interaction
+    if y == 8 and x > 8 and x < 14 then
+      if y == 8 and x == 11 and z == 1 then
+        new_clockdiv = 1
+        new_sel_clockdiv = 3
+      end
+    
+      if y == 8 and x == 10 and z == 1then
+        new_clockdiv = 0.5
+        new_sel_clockdiv = 2
+      end
+      
+      if y == 8 and x == 9 and z == 1then
+        new_clockdiv = 0.25
+        new_sel_clockdiv = 1
+      end
+  
+      if y == 8 and x == 12 and z == 1then
+        new_clockdiv = 2
+        new_sel_clockdiv = 4
+      end
+      
+      if y == 8 and x == 13 and z == 1then
+        new_clockdiv = 4
+        new_sel_clockdiv = 5
+      end
+    end
+  if y == 1 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
     g:refresh()
     voice[1].bit = 9-x
@@ -692,7 +821,7 @@ g.key = function(x,y,z)
     redraw()
     g:refresh()
   end
-  if y == 2 and x < 9 then
+  if y == 2 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
     g:refresh()
     voice[2].bit = 9-x
@@ -853,6 +982,17 @@ function grid_redraw()
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   g:refresh()
+  
+  
+  
+  -- ADDED: redraw the led for clockdiv = 1/4
+  for i=9, 13 do
+    g:led(i, 8, 4)
+  end
+  g:led(8 + new_sel_clockdiv, 8, 15)
+  
+
+  
 end
 
 function grid_constant()
@@ -934,6 +1074,8 @@ function new_preset_pack(set)
   new_preset_pool[set].new_high = new_high
   new_preset_pool[set].v1_octave = voice[1].octave
   new_preset_pool[set].v2_octave = voice[2].octave
+  new_preset_pool[set].new_clockdiv = new_clockdiv
+  new_preset_pool[set].new_sel_clockdiv = new_sel_clockdiv
 end
 
 function new_preset_unpack(set)
@@ -947,6 +1089,8 @@ function new_preset_unpack(set)
   new_high = new_preset_pool[set].new_high
   voice[1].octave = new_preset_pool[set].v1_octave
   voice[2].octave = new_preset_pool[set].v2_octave
+  new_clockdiv = new_preset_pool[set].new_clockdiv
+  new_sel_clockdiv = new_preset_pool[set].new_sel_clockdiv
   bang()
   redraw()
   grid_constant()
@@ -958,10 +1102,12 @@ function preset_remove(set)
     new_preset_pool[i].rule = new_preset_pool[i+1].rule
     new_preset_pool[i].v1_bit = new_preset_pool[i+1].v1_bit
     new_preset_pool[i].v2_bit = new_preset_pool[i+1].v2_bit
-    new_preset_pool[i].new_low = new_preset_pool[i+1].new_low 
+    new_preset_pool[i].new_low = new_preset_pool[i+1].new_low
     new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
     new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
     new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
+    new_preset_pool[i].new_clockdiv = new_preset_pool[i+1].new_clockdiv
+    new_preset_pool[i].new_sel_clockdiv = new_preset_pool[i+1].new_sel_clockdiv
   end
   if selected_preset > 1 and selected_preset < preset_count then
     selected_preset = selected_preset
@@ -989,6 +1135,7 @@ function savestate()
     io.write(new_preset_pool[i].new_high .. "\n")
     io.write(new_preset_pool[i].v1_octave .. "\n")
     io.write(new_preset_pool[i].v2_octave .. "\n")
+    io.write(new_preset_pool[i].new_clockdiv .. "\n")
   end
   --io.write(params:get("bpm") .. "\n")
   --io.write(params:get("clock_out") .. "\n")
@@ -1023,6 +1170,7 @@ function loadstate()
         new_preset_pool[i].new_high = tonumber(io.read())
         new_preset_pool[i].v1_octave = tonumber(io.read())
         new_preset_pool[i].v2_octave = tonumber(io.read())
+        new_preset_pool[i].new_clockdiv = tonumber(io.read())
       end
       load_bpm = tonumber(io.read())
       load_clock = tonumber(io.read())
@@ -1034,7 +1182,7 @@ function loadstate()
       load_tran_prob_1 = tonumber(io.read())
       load_tran_2 = tonumber(io.read())
       load_tran_prob_2 = tonumber(io.read())
-      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and 
+      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and
       load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
         --params:set("bpm", 110)
         --params:set("clock_out", 1)
