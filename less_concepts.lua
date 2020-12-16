@@ -2,7 +2,7 @@
 -- cellular automata sequencer
 -- v2.1.2 (crow) @dan_derks (v.2.1.3b (w/syn + clock + mutes) @linusschrab)
 -- llllllll.co/t/less-concepts/
--- 
+--
 -- hold key 1: switch between
 -- less concepts +
 -- ~ r e f r a i n
@@ -322,7 +322,7 @@ local function iterate()
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
       end
     end
-    
+
   -- EVENTS FOR R E F R A I N
     if seed_as_binary[track[i].bit] == 1 then
       random_gate[i+2].comparator = math.random(0,100)
@@ -432,7 +432,7 @@ end
 
 -- everything that happens when the script is first loaded
 function init()
-  randomize_all()
+  --randomize_all()
   --voice[1].bit = 1
   --voice[2].bit = 8
   math.randomseed(os.time())
@@ -475,7 +475,7 @@ function init()
     clk_midi.event = function(data) clk:process_midi(data) end
   end}
   --]]
-  
+
   params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
   params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
@@ -738,7 +738,7 @@ if screen_focus%2 == 1 then
   screen.move(53,62)
   screen.level(edit == "clock" and 15 or 2)
   screen.text("1/".. math.floor(4 * new_clockdiv))
-  
+
   screen.move(0,62)
   screen.level(edit == "lc_bits" and 15 or 2)
   for i = 1,8 do
@@ -784,22 +784,22 @@ g.key = function(x,y,z)
         new_clockdiv = 1
         new_sel_clockdiv = 3
       end
-    
+
       if y == 8 and x == 10 and z == 1then
         new_clockdiv = 0.5
         new_sel_clockdiv = 2
       end
-      
+
       if y == 8 and x == 9 and z == 1then
         new_clockdiv = 0.25
         new_sel_clockdiv = 1
       end
-  
+
       if y == 8 and x == 12 and z == 1then
         new_clockdiv = 2
         new_sel_clockdiv = 4
       end
-      
+
       if y == 8 and x == 13 and z == 1then
         new_clockdiv = 4
         new_sel_clockdiv = 5
@@ -982,17 +982,17 @@ function grid_redraw()
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   g:refresh()
-  
-  
-  
+
+
+
   -- ADDED: redraw the led for clockdiv = 1/4
   for i=9, 13 do
     g:led(i, 8, 4)
   end
   g:led(8 + new_sel_clockdiv, 8, 15)
-  
 
-  
+
+
 end
 
 function grid_constant()
