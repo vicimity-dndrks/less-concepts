@@ -38,7 +38,7 @@
 -- think.
 -- discover.
 
-local seed = 36
+local seed = 36 -- 36 / 30 for testing purposes
 local rule = 30
 local next_seed = nil
 local new_low = 1
@@ -332,7 +332,7 @@ local function iterate()
     end
   end
   redraw()
-  grid_redraw()
+  grid_dirty = true
 end
 
 function change(s)
@@ -430,11 +430,22 @@ function add_params()
   }
 end
 
+function pulse()
+  while true do
+    clock.sync(1/new_clockdiv)
+    iterate()
+  end
+end
+
 -- everything that happens when the script is first loaded
 function init()
   --randomize_all()
   --voice[1].bit = 1
   --voice[2].bit = 8
+  
+  
+  grid_dirty = true
+  clock.run(grid_redraw_clock) -- start the grid redraw clock
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
   seed_to_binary()
@@ -444,7 +455,7 @@ function init()
   g:led(new_high,6,15)
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
-  grid_redraw()
+  grid_dirty = true
   g:refresh()
   params:add_number("set", "set", 1,100,1)
   params:set_action("set", function (x) selected_set = x end)
@@ -453,12 +464,7 @@ function init()
   params:add_separator()
   m = midi.connect()
 
-  function pulse()
-    while true do
-      clock.sync(1/new_clockdiv)
-      iterate()
-    end
-  end
+
 
   --[[
   clk.on_step = function() iterate() end
@@ -551,7 +557,6 @@ names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "majo
 params:set("wsyn_ar_mode", 2)
 
 --clk:start()
-
 clock.run(pulse)
 
 end
@@ -573,7 +578,7 @@ if screen_focus % 2 == 1 then
       preset_count = preset_count + 1
       new_preset_pack(preset_count)
       selected_preset = 1
-      grid_redraw()
+      grid_dirty = true
     elseif preset_count <= 8 and edit == "presets" then
       new_preset_unpack(selected_preset)
     end
@@ -601,7 +606,7 @@ if screen_focus % 2 == 1 then
       for i=1,8 do
         g:led(i,8,0)
       end
-      grid_redraw()
+      grid_dirty = true
     end
   elseif n == 3 and z == 0 then
     KEY3 = false
@@ -804,6 +809,10 @@ g.key = function(x,y,z)
         new_clockdiv = 4
         new_sel_clockdiv = 5
       end
+      grid_dirty = true
+      redraw()
+      --clock.cancel(pulse)
+      --pulse() --FIX
     end
   if y == 1 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
@@ -923,14 +932,14 @@ g.key = function(x,y,z)
     end
     bang()
     redraw()
-    grid_redraw()
+    grid_dirty = true
     g:refresh()
   end
   if y == 8 and z == 1 then
     if x < 9 and x < preset_count+1 then
       new_preset_unpack(x)
       selected_preset = x
-      grid_redraw()
+      grid_dirty = true
     elseif x == 14 and preset_count > 0 then
       preset_remove(selected_preset)
       grid_constant()
@@ -940,18 +949,29 @@ g.key = function(x,y,z)
         g:led(i,8,0)
       end
       selected_preset = 0
-      grid_redraw()
+      grid_dirty = true
     elseif x == 16 then
       if preset_count < 8 then
       preset_count = preset_count + 1
       new_preset_pack(preset_count)
-      grid_redraw()
+      grid_dirty = true
       end
     end
   end
 end
 
 -- hardware: grid redraw
+
+function grid_redraw_clock() -- our grid redraw clock
+  while true do -- while it's running...
+    clock.sleep(1/30) -- refresh at 30fps.
+    if grid_dirty then -- if a redraw is needed...
+      grid_redraw() -- redraw...
+      grid_dirty = false -- then redraw is no longer needed.
+    end
+  end
+end
+
 function grid_redraw()
   for i=1,8 do
     g:led(i,1,0)
@@ -1009,7 +1029,7 @@ function grid_constant()
   elseif new_high > 16 then
     g:led(new_high-16,7,15)
   end
-  grid_redraw()
+  grid_dirty = true
   g:refresh()
 end
 
@@ -1030,6 +1050,7 @@ function randomize_all()
   bang()
   redraw()
   grid_constant()
+  grid_redraw()
 end
 
 function randomize_some()
@@ -1061,6 +1082,7 @@ function randomize_some()
   bang()
   redraw()
   grid_constant()
+  grid_redraw()
 end
 
 -- pack all maths parameters into a volatile preset
