@@ -38,8 +38,8 @@
 -- think.
 -- discover.
 
-local seed = 36 -- 36 / 30 for testing purposes
-local rule = 30
+local seed = 0
+local rule = 0
 local next_seed = nil
 local new_low = 1
 local new_high = 14
@@ -58,13 +58,12 @@ for i = 1,2 do
   voice[i].active_notes = {}
   voice[i].ch = 1
 end
-
-local v1_bit = 0
-local v2_bit = 0
-local v1_octave = 0
-local v2_octave = 0
-local ch_1 = 1
-local ch_2 = 1
+--local v1_bit = 1
+--local v2_bit = 5
+--local v1_octave = 0
+--local v2_octave = 0
+--local ch_1 = 1
+--local ch_2 = 1
 local semi = 0
 local preset_count = 0
 local active_notes_v1 = {}
@@ -108,7 +107,6 @@ for i = 1,9 do
   new_preset_pool[i].v1_octave = {}
   new_preset_pool[i].v2_octave = {}
 end
-local selected_set = 0
 
 local new_clockdiv = 1
 local new_sel_clockdiv = 3
@@ -173,59 +171,58 @@ end
 
 -- pack the seeds into clusters, compare these against neighborhoods to determine gates in iterate()
 local function bang()
-redraw()
-seed_to_binary()
-rule_to_binary()
-seed_pack1 = {seed_as_binary[1], seed_as_binary[8], seed_as_binary[7]}
-seed_pack2 = {seed_as_binary[8], seed_as_binary[7], seed_as_binary[6]}
-seed_pack3 = {seed_as_binary[7], seed_as_binary[6], seed_as_binary[5]}
-seed_pack4 = {seed_as_binary[6], seed_as_binary[5], seed_as_binary[4]}
-seed_pack5 = {seed_as_binary[5], seed_as_binary[4], seed_as_binary[3]}
-seed_pack6 = {seed_as_binary[4], seed_as_binary[3], seed_as_binary[2]}
-seed_pack7 = {seed_as_binary[3], seed_as_binary[2], seed_as_binary[1]}
-seed_pack8 = {seed_as_binary[2], seed_as_binary[1], seed_as_binary[8]}
-
-neighborhoods1 = {1,1,1}
-neighborhoods2 = {1,1,0}
-neighborhoods3 = {1,0,1}
-neighborhoods4 = {1,0,0}
-neighborhoods5 = {0,1,1}
-neighborhoods6 = {0,1,0}
-neighborhoods7 = {0,0,1}
-neighborhoods8 = {0,0,0}
-
-local function com (seed_packN, lshift, mask)
-  if compare (seed_packN,neighborhoods1) then
-    return (rule_as_binary[8] << lshift) & mask
-  elseif compare (seed_packN, neighborhoods2) then
-    return (rule_as_binary[7] << lshift) & mask
-  elseif compare (seed_packN, neighborhoods3) then
-    return (rule_as_binary[6] << lshift) & mask
-  elseif compare (seed_packN, neighborhoods4) then
-    return (rule_as_binary[5] << lshift) & mask
-  elseif compare (seed_packN, neighborhoods5) then
-    return (rule_as_binary[4] << lshift) & mask
-  elseif compare (seed_packN, neighborhoods6) then
-    return (rule_as_binary[3] << lshift) & mask
-  elseif compare (seed_packN, neighborhoods7) then
-    return (rule_as_binary[2] << lshift) & mask
-  elseif compare (seed_packN, neighborhoods8) then
-    return (rule_as_binary[1] << lshift) & mask
-  else return (0 << lshift) & mask
+  redraw()
+  seed_to_binary()
+  rule_to_binary()
+  seed_pack1 = {seed_as_binary[1], seed_as_binary[8], seed_as_binary[7]}
+  seed_pack2 = {seed_as_binary[8], seed_as_binary[7], seed_as_binary[6]}
+  seed_pack3 = {seed_as_binary[7], seed_as_binary[6], seed_as_binary[5]}
+  seed_pack4 = {seed_as_binary[6], seed_as_binary[5], seed_as_binary[4]}
+  seed_pack5 = {seed_as_binary[5], seed_as_binary[4], seed_as_binary[3]}
+  seed_pack6 = {seed_as_binary[4], seed_as_binary[3], seed_as_binary[2]}
+  seed_pack7 = {seed_as_binary[3], seed_as_binary[2], seed_as_binary[1]}
+  seed_pack8 = {seed_as_binary[2], seed_as_binary[1], seed_as_binary[8]}
+  
+  neighborhoods1 = {1,1,1}
+  neighborhoods2 = {1,1,0}
+  neighborhoods3 = {1,0,1}
+  neighborhoods4 = {1,0,0}
+  neighborhoods5 = {0,1,1}
+  neighborhoods6 = {0,1,0}
+  neighborhoods7 = {0,0,1}
+  neighborhoods8 = {0,0,0}
+  
+  local function com (seed_packN, lshift, mask)
+    if compare (seed_packN,neighborhoods1) then
+      return (rule_as_binary[8] << lshift) & mask
+    elseif compare (seed_packN, neighborhoods2) then
+      return (rule_as_binary[7] << lshift) & mask
+    elseif compare (seed_packN, neighborhoods3) then
+      return (rule_as_binary[6] << lshift) & mask
+    elseif compare (seed_packN, neighborhoods4) then
+      return (rule_as_binary[5] << lshift) & mask
+    elseif compare (seed_packN, neighborhoods5) then
+      return (rule_as_binary[4] << lshift) & mask
+    elseif compare (seed_packN, neighborhoods6) then
+      return (rule_as_binary[3] << lshift) & mask
+    elseif compare (seed_packN, neighborhoods7) then
+      return (rule_as_binary[2] << lshift) & mask
+    elseif compare (seed_packN, neighborhoods8) then
+      return (rule_as_binary[1] << lshift) & mask
+    else return (0 << lshift) & mask
+    end
   end
-end
-
-out1 = com(seed_pack1, 7, 128)
-out2 = com(seed_pack2, 6, 64)
-out3 = com(seed_pack3, 5, 32)
-out4 = com(seed_pack4, 4, 16)
-out5 = com(seed_pack5, 3, 8)
-out6 = com(seed_pack6, 2, 4)
-out7 = com(seed_pack7, 1, 2)
-out8 = com(seed_pack8, 0, 1)
-
-next_seed = out1+out2+out3+out4+out5+out6+out7+out8
-
+  
+  out1 = com(seed_pack1, 7, 128)
+  out2 = com(seed_pack2, 6, 64)
+  out3 = com(seed_pack3, 5, 32)
+  out4 = com(seed_pack4, 4, 16)
+  out5 = com(seed_pack5, 3, 8)
+  out6 = com(seed_pack6, 2, 4)
+  out7 = com(seed_pack7, 1, 2)
+  out8 = com(seed_pack8, 0, 1)
+  
+  next_seed = out1+out2+out3+out4+out5+out6+out7+out8
 end
 
 local function notes_off(n)
@@ -363,7 +360,7 @@ end
 
 refrain = include "lib/refrain"
 
-function add_params()
+function wsyn_add_params()
   params:add_separator("W/Syn")
   params:add {
     type = "option",
@@ -439,10 +436,13 @@ end
 
 -- everything that happens when the script is first loaded
 function init()
-  --randomize_all()
-  --voice[1].bit = 1
-  --voice[2].bit = 8
-  
+  -- for testing purposes (REMOVE WHEN DONE)
+  voice[1].bit = 1
+  voice[2].bit = 8
+  seed = 36
+  rule = 30
+  new_seed = seed
+  new_rule = rule
   
   grid_dirty = true
   clock.run(grid_redraw_clock) -- start the grid redraw clock
@@ -456,31 +456,13 @@ function init()
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   grid_dirty = true
-  g:refresh()
+  --g:refresh()
   params:add_number("set", "set", 1,100,1)
   params:set_action("set", function (x) selected_set = x end)
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   params:add_separator()
   m = midi.connect()
-
-
-
-  --[[
-  clk.on_step = function() iterate() end
-  clk.on_select_internal = function() clk:start() crow.input[2].mode("none") end
-  clk.on_select_external = function() print("external MIDI") crow.input[2].mode("none") end
-  clk.on_select_crow = function()
-    crow.input[2].mode("change",2,0.1,"both")
-    crow.input[2].change = change
-  end
-  clk:add_clock_params()
-  params:add{type = "number", id = "midi_device", name = "midi device", min = 1, max = 4, default = 1, action = function(value)
-    clk_midi.event = nil
-    clk_midi = midi.connect(value)
-    clk_midi.event = function(data) clk:process_midi(data) end
-  end}
-  --]]
 
   params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
@@ -513,7 +495,6 @@ function init()
         crow.ii.jf.mode(0)
       end
     end}
-  add_params()
 
   params:add_separator()
   params:add_option("scale", "scale", names, 1)
@@ -531,33 +512,33 @@ function init()
     params:set_action("gate prob "..i, function(x) random_gate[i].probability = x end)
   end
   refrain.init()
+  wsyn_add_params()
   passersby.add_params()
   bang()
 
-notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,43,45,47,48},
-          {0,2,3,5,7,8,10,12,14,15,17,19,20,22,24,26,27,29,31,32,34,36,38,39,41,43,44,46,48},
-          {0,2,3,5,7,9,10,12,14,15,17,19,21,22,24,26,27,29,31,33,34,36,38,39,41,43,45,46,48},
-          {0,1,3,5,7,8,10,12,13,15,17,19,20,22,24,25,27,29,31,32,34,36,37,39,41,43,44,46,48},
-          {0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31,33,35,36,38,40,42,43,45,47,48},
-          {0,2,4,5,7,9,10,12,14,16,17,19,21,22,24,26,28,29,31,33,34,36,38,40,41,43,45,46,48},
-          {0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,43,45,48,50,52,55,57,60,62,64,67},
-          {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67},
-          {0,2,5,7,10,12,14,17,19,22,24,26,29,31,34,36,38,41,43,46,48,50,53,55,58,60,62,65,67},
-          {0,3,5,8,10,12,15,17,20,22,24,27,29,32,34,36,39,41,44,46,48,51,53,56,58,60,63,65,68},
-          {0,2,5,7,9,12,14,17,19,21,24,26,29,31,33,36,38,41,43,45,48,50,53,55,57,60,62,65,67},
-          {0,1,3,6,7,8,11,12,13,15,18,19,20,23,24,25,27,30,31,32,35,36,37,39,42,43,44,47,48},
-          {0,1,4,6,7,8,11,12,13,16,18,19,20,23,24,25,28,30,31,32,35,36,37,40,42,43,44,47,48},
-          {0,1,4,6,7,9,11,12,13,16,18,19,21,23,24,25,28,30,31,33,35,36,37,40,42,43,45,47,48},
-          {0,1,4,5,7,8,11,12,13,16,17,19,20,23,24,25,28,29,31,32,35,36,37,40,41,43,44,47,48},
-          {0,1,4,5,7,9,10,12,13,16,17,19,21,22,24,25,28,29,31,33,35,36,37,40,41,43,45,47,48},
-          {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28} }
+  notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,43,45,47,48},
+            {0,2,3,5,7,8,10,12,14,15,17,19,20,22,24,26,27,29,31,32,34,36,38,39,41,43,44,46,48},
+            {0,2,3,5,7,9,10,12,14,15,17,19,21,22,24,26,27,29,31,33,34,36,38,39,41,43,45,46,48},
+            {0,1,3,5,7,8,10,12,13,15,17,19,20,22,24,25,27,29,31,32,34,36,37,39,41,43,44,46,48},
+            {0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31,33,35,36,38,40,42,43,45,47,48},
+            {0,2,4,5,7,9,10,12,14,16,17,19,21,22,24,26,28,29,31,33,34,36,38,40,41,43,45,46,48},
+            {0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,43,45,48,50,52,55,57,60,62,64,67},
+            {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67},
+            {0,2,5,7,10,12,14,17,19,22,24,26,29,31,34,36,38,41,43,46,48,50,53,55,58,60,62,65,67},
+            {0,3,5,8,10,12,15,17,20,22,24,27,29,32,34,36,39,41,44,46,48,51,53,56,58,60,63,65,68},
+            {0,2,5,7,9,12,14,17,19,21,24,26,29,31,33,36,38,41,43,45,48,50,53,55,57,60,62,65,67},
+            {0,1,3,6,7,8,11,12,13,15,18,19,20,23,24,25,27,30,31,32,35,36,37,39,42,43,44,47,48},
+            {0,1,4,6,7,8,11,12,13,16,18,19,20,23,24,25,28,30,31,32,35,36,37,40,42,43,44,47,48},
+            {0,1,4,6,7,9,11,12,13,16,18,19,21,23,24,25,28,30,31,33,35,36,37,40,42,43,45,47,48},
+            {0,1,4,5,7,8,11,12,13,16,17,19,20,23,24,25,28,29,31,32,35,36,37,40,41,43,44,47,48},
+            {0,1,4,5,7,9,10,12,13,16,17,19,21,22,24,25,28,29,31,33,35,36,37,40,41,43,45,47,48},
+            {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28} }
+  
+  names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 
-names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
+  params:set("wsyn_ar_mode", 2)
 
-params:set("wsyn_ar_mode", 2)
-
---clk:start()
-clock.run(pulse)
+  clock.run(pulse)
 
 end
 
@@ -640,7 +621,7 @@ if screen_focus % 2 == 1 then
       elseif edit == "lc_gate_probs" then
         params:set("gate prob 1", math.min(100,(math.max(params:get("gate prob 1") + d,0))))
       elseif edit == "low/high" then
-        new_low = math.min(29,(math.max(new_low + d,1)))
+        new_low = math.min(32,(math.max(new_low + d,1))) --FIX GLITCH!!!
         for i=1,16 do
           g:led(i,4,0)
           g:led(i,5,0)
@@ -649,14 +630,16 @@ if screen_focus % 2 == 1 then
           elseif new_low > 16 then
             g:led(new_low-16,5,15)
           end
-          g:refresh()
+          --g:refresh()
+          grid_dirty = true --new
         end
       elseif edit == "octaves" then
         voice[1].octave = math.min(3,(math.max(voice[1].octave + d,-3)))
         for i=10,16 do
           g:led(i,1,0)
           g:led(voice[1].octave+13,1,15)
-          g:refresh()
+          --g:refresh()
+          grid_dirty = true --new
         end
       elseif edit == "lc_bits" then
         voice[1].bit = math.min(8,(math.max(voice[1].bit - d,0)))
@@ -678,7 +661,7 @@ if screen_focus % 2 == 1 then
       elseif edit == "rand_prob" then
         params:set("tran prob 2", math.min(100,(math.max(params:get("tran prob 2") + d,0))))
       elseif edit == "low/high" then
-        new_high = math.min(29,(math.max(new_high + d,1)))
+        new_high = math.min(32,(math.max(new_high + d,1))) -- FIX GLITCH!!!
         for i=1,16 do
           g:led(i,6,0)
           g:led(i,7,0)
@@ -687,14 +670,16 @@ if screen_focus % 2 == 1 then
           elseif new_high > 16 then
             g:led(new_high-16,7,15)
           end
-          g:refresh()
+          --g:refresh()
+          grid_dirty = true --new
         end
       elseif edit == "octaves" then
         voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
         for i=10,16 do
           g:led(i,2,0)
           g:led(voice[2].octave+13,2,15)
-          g:refresh()
+          --g:refresh()
+          grid_dirty = true --new
         end
       elseif edit == "lc_bits" then
         voice[2].bit = math.min(8,(math.max(voice[2].bit - d,0)))
@@ -715,111 +700,111 @@ end
 
 -- hardware: screen redraw
 function redraw()
-  --screen.clear()
-if screen_focus%2 == 1 then
-  screen.font_face(1)
-  screen.font_size(8)
-  screen.clear()
-  screen.level(15)
-  screen.move(0,10)
-  screen.level(edit == "seed/rule" and 15 or 2)
-  screen.text("seed: "..new_seed.." // rule: "..new_rule)
-  screen.move(0,20)
-  screen.level(edit == "lc_gate_probs" and 15 or 2)
-  screen.text("gate prob 1: "..params:get("gate prob 1").."% // 2: "..params:get("gate prob 2").."%")
-  screen.move(0,30)
-  screen.level(edit == "low/high" and 15 or 2)
-  screen.text("low: "..new_low.." // high: "..new_high)
-  screen.move(0,40)
-  screen.level(edit == "rand_prob" and 15 or 2)
-  screen.text("tran prob 1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
-  screen.move(0,50)
-  screen.level(edit == "octaves" and 15 or 2)
-  screen.text("vox 1 oct: "..voice[1].octave)
-  screen.move(57,50)
-  screen.level(edit == "octaves" and 15 or 2)
-  screen.text("// vox 2 oct: "..voice[2].octave)
-  --ADDED: UI for clock divider
-  screen.move(53,62)
-  screen.level(edit == "clock" and 15 or 2)
-  screen.text("1/".. math.floor(4 * new_clockdiv))
-
-  screen.move(0,62)
-  screen.level(edit == "lc_bits" and 15 or 2)
-  for i = 1,8 do
-    screen.text(seed_as_binary[9-i])
-    screen.move((5*i),62)
-  end
-  screen.font_size(10)
-  screen.move(40-(5*voice[1].bit),59)
-  screen.text("-")
-  screen.move(40-(5*voice[2].bit),67)
-  screen.text("-")
-  screen.font_size(8)
-  screen.level(15)
-  screen.move(30,60)
-  for i = 1,8 do
-    screen.move(80+(i*5),62)
-    if edit == "presets" then
-      screen.level(selected_preset == i and 15 or 2)
-    else
-      screen.level(2)
+  if screen_focus%2 == 1 then
+    screen.font_face(1)
+    screen.font_size(8)
+    screen.clear()
+    screen.level(15)
+    screen.move(0,10)
+    screen.level(edit == "seed/rule" and 15 or 2)
+    screen.text("seed: "..new_seed.." // rule: "..new_rule)
+    screen.move(0,20)
+    screen.level(edit == "lc_gate_probs" and 15 or 2)
+    screen.text("gate prob 1: "..params:get("gate prob 1").."% // 2: "..params:get("gate prob 2").."%")
+    screen.move(0,30)
+    screen.level(edit == "low/high" and 15 or 2)
+    screen.text("low: "..new_low.." // high: "..new_high)
+    screen.move(0,40)
+    screen.level(edit == "rand_prob" and 15 or 2)
+    screen.text("tran prob 1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
+    screen.move(0,50)
+    screen.level(edit == "octaves" and 15 or 2)
+    screen.text("vox 1 oct: "..voice[1].octave)
+    screen.move(57,50)
+    screen.level(edit == "octaves" and 15 or 2)
+    screen.text("// vox 2 oct: "..voice[2].octave)
+    --ADDED: screen info for clock divider
+    screen.move(53,62)
+    screen.level(edit == "clock" and 15 or 2)
+    screen.text("1/".. math.floor(4 * new_clockdiv))
+  
+    screen.move(0,62)
+    screen.level(edit == "lc_bits" and 15 or 2)
+    for i = 1,8 do
+      screen.text(seed_as_binary[9-i])
+      screen.move((5*i),62)
     end
-    if preset_count < (i) then
-      screen.text("_")
-    else
-      screen.text("*")
+    screen.font_size(10)
+    screen.move(40-(5*voice[1].bit),59)
+    screen.text("-")
+    screen.move(40-(5*voice[2].bit),67)
+    screen.text("-")
+    screen.font_size(8)
+    screen.level(15)
+    screen.move(30,60)
+    for i = 1,8 do
+      screen.move(80+(i*5),62)
+      if edit == "presets" then
+        screen.level(selected_preset == i and 15 or 2)
+      else
+        screen.level(2)
+      end
+      if preset_count < (i) then
+        screen.text("_")
+      else
+        screen.text("*")
+      end
     end
+    screen.update()
+  elseif screen_focus%2==0 then
+    -- PUT OTHER SCREEN REDRAW HERE
+    refrain.redraw()
   end
-  screen.update()
-elseif screen_focus%2==0 then
-  -- PUT OTHER SCREEN REDRAW HERE
-  refrain.redraw()
-end
 end
 
 -- hardware: grid connect
+
 g = grid.connect()
+
 -- hardware: grid event (eg 'what happens when a button is pressed')
+
 g.key = function(x,y,z)
 
   -- ADDED: first steps to alter clock divider for nice interaction
-    if y == 8 and x > 8 and x < 14 then
-      if y == 8 and x == 11 and z == 1 then
-        new_clockdiv = 1
-        new_sel_clockdiv = 3
-      end
-
-      if y == 8 and x == 10 and z == 1then
-        new_clockdiv = 0.5
-        new_sel_clockdiv = 2
-      end
-
-      if y == 8 and x == 9 and z == 1then
-        new_clockdiv = 0.25
-        new_sel_clockdiv = 1
-      end
-
-      if y == 8 and x == 12 and z == 1then
-        new_clockdiv = 2
-        new_sel_clockdiv = 4
-      end
-
-      if y == 8 and x == 13 and z == 1then
-        new_clockdiv = 4
-        new_sel_clockdiv = 5
-      end
-      grid_dirty = true
-      redraw()
-      --clock.cancel(pulse)
-      --pulse() --FIX
+  if y == 8 and x > 8 and x < 14 then
+    if y == 8 and x == 11 and z == 1 then
+      new_clockdiv = 1
+      new_sel_clockdiv = 3
     end
+
+    if y == 8 and x == 10 and z == 1then
+      new_clockdiv = 0.5
+      new_sel_clockdiv = 2
+    end
+
+    if y == 8 and x == 9 and z == 1then
+      new_clockdiv = 0.25
+      new_sel_clockdiv = 1
+    end
+
+    if y == 8 and x == 12 and z == 1then
+      new_clockdiv = 2
+      new_sel_clockdiv = 4
+    end
+
+    if y == 8 and x == 13 and z == 1then
+      new_clockdiv = 4
+      new_sel_clockdiv = 5
+    end
+    grid_dirty = true
+    redraw()
+  end
+  
   if y == 1 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
-    g:refresh()
     voice[1].bit = 9-x
-    bang()
     redraw()
+    grid_dirty = true
   end
   if y == 1 and x > 9 and z == 1 then
     for i=10,16 do
@@ -828,14 +813,13 @@ g.key = function(x,y,z)
     g:led(x,y,z*15)
     voice[1].octave = x-13
     redraw()
-    g:refresh()
+    grid_dirty = true
   end
   if y == 2 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
-    g:refresh()
     voice[2].bit = 9-x
-    bang()
     redraw()
+    grid_dirty = true
   end
   if y == 2 and x > 9 and z == 1 then
     for i=10,16 do
@@ -844,47 +828,31 @@ g.key = function(x,y,z)
     g:led(x,y,z*15)
     voice[2].octave = x-13
     redraw()
-    g:refresh()
+    grid_dirty = true
   end
   if y == 4 and z == 1 then
-    for i=1,16 do
-      g:led(i,4,0)
-      g:led(i,5,0)
-    end
     g:led(x,y,z*15)
     new_low = x
     redraw()
-    g:refresh()
+    grid_dirty = true --new
   end
   if y == 5 and z == 1 then
-    for i=1,16 do
-      g:led(i,4,0)
-      g:led(i,5,0)
-    end
     g:led(x,y,z*15)
     new_low = x+16
     redraw()
-    g:refresh()
+    grid_dirty = true
   end
   if y == 6 and z == 1 then
-    for i=1,16 do
-      g:led(i,6,0)
-      g:led(i,7,0)
-    end
     g:led(x,y,z*15)
     new_high = x
     redraw()
-    g:refresh()
+    grid_dirty = true
   end
   if y == 7 and z == 1 then
-    for i=1,16 do
-      g:led(i,6,0)
-      g:led(i,7,0)
-    end
     g:led(x,y,z*15)
     new_high = x+16
     redraw()
-    g:refresh()
+    grid_dirty = true
   end
   if y == 3 and z == 1 then
     if x == 1 then
@@ -899,10 +867,10 @@ g.key = function(x,y,z)
       voice[2].bit = math.random(0,8)
     elseif x == 7 or x == 8 or x == 10 or x == 11 then
       if x == 7 then
-        new_low = math.random(1,29)
+        new_low = math.random(1,32)
       end
       if x == 8 then
-        new_high = math.random(1,29)
+        new_high = math.random(1,32)
       end
       if x == 10 then
         voice[1].octave = math.random(-2,2)
@@ -910,30 +878,20 @@ g.key = function(x,y,z)
       if x == 11 then
         voice[2].octave = math.random(-2,2)
       end
-      g:all(0)
-      g:led(voice[1].octave+13,1,15)
-      g:led(voice[2].octave+13,2,15)
-      if new_low < 17 then
-        g:led(new_low,4,15)
-      else
-        g:led(new_low-16,5,15)
-      end
-      if new_high < 17 then
-        g:led(new_high,6,15)
-      else
-        g:led(new_high-16,7,15)
-      end
     elseif x == 10 then
       voice[1].octave = math.random(-2,2)
     elseif x == 11 then
       voice[2].octave = math.random(-2,2)
+    elseif x == 13 then
+      -- implement random clock div (lower clock rate)
+    elseif x == 14 then
+      -- implement random clock div (higher clock rate)
     elseif x == 16 then
       randomize_all()
     end
     bang()
     redraw()
     grid_dirty = true
-    g:refresh()
   end
   if y == 8 and z == 1 then
     if x < 9 and x < preset_count+1 then
@@ -942,7 +900,7 @@ g.key = function(x,y,z)
       grid_dirty = true
     elseif x == 14 and preset_count > 0 then
       preset_remove(selected_preset)
-      grid_constant()
+      grid_dirty = true
     elseif x == 15 then
       preset_count = 0
       for i=1,8 do
@@ -962,17 +920,18 @@ end
 
 -- hardware: grid redraw
 
-function grid_redraw_clock() -- our grid redraw clock
-  while true do -- while it's running...
-    clock.sleep(1/30) -- refresh at 30fps.
-    if grid_dirty then -- if a redraw is needed...
-      grid_redraw() -- redraw...
-      grid_dirty = false -- then redraw is no longer needed.
+function grid_redraw_clock()
+  while true do
+    clock.sleep(1/30)
+    if grid_dirty then
+      grid_redraw()
+      grid_dirty = false
     end
   end
 end
 
 function grid_redraw()
+  g:all(0)
   for i=1,8 do
     g:led(i,1,0)
     g:led(i,2,0)
@@ -991,6 +950,8 @@ function grid_redraw()
   g:led(8,3,4)
   g:led(10,3,4)
   g:led(11,3,4)
+  g:led(13,3,4)
+  g:led(14,3,4)
   g:led(16,3,4)
   for i=1,preset_count do
     g:led(i,8,6)
@@ -999,24 +960,6 @@ function grid_redraw()
   g:led(14,8,2)
   g:led(15,8,4)
   g:led(16,8,6)
-  g:led(voice[1].octave+13,1,15)
-  g:led(voice[2].octave+13,2,15)
-  g:refresh()
-
-
-
-  -- ADDED: redraw the led for clockdiv = 1/4
-  for i=9, 13 do
-    g:led(i, 8, 4)
-  end
-  g:led(8 + new_sel_clockdiv, 8, 15)
-
-
-
-end
-
-function grid_constant()
-  g:all(0)
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   if new_low < 17 then
@@ -1029,28 +972,34 @@ function grid_constant()
   elseif new_high > 16 then
     g:led(new_high-16,7,15)
   end
-  grid_dirty = true
+  
+  -- ADDED: redraw the led for clockdiv = 1/4
+  for i=9, 13 do
+    g:led(i, 8, 4)
+  end
+  g:led(8 + new_sel_clockdiv, 8, 15)
   g:refresh()
+  grid_dirty = true
 end
 
 -- this section is all performative stuff
 
 -- randomize all maths paramaters (does not affect scale or engine, for ease of use)
 function randomize_all()
+  grid_dirty = true
   seed = math.random(0,255)
   new_seed = seed
   rule = math.random(0,255)
   new_rule = rule
   voice[1].bit = math.random(0,8)
   voice[2].bit = math.random(0,8)
-  new_low = math.random(1,29)
-  new_high = math.random(1,29)
+  new_low = math.random(1,32)
+  new_high = math.random(1,32)
   voice[1].octave = math.random(-2,2)
   voice[2].octave = math.random(-2,2)
   bang()
   redraw()
-  grid_constant()
-  grid_redraw()
+  grid_dirty = true
 end
 
 function randomize_some()
@@ -1064,8 +1013,8 @@ function randomize_some()
       params:set("gate prob "..i, math.random(0,100))
     end
   elseif edit == "low/high" then
-    new_low = math.random(1,29)
-    new_high = math.random(1,29)
+    new_low = math.random(1,32)
+    new_high = math.random(1,32)
   elseif edit == "rand_prob" then
     for i = 1,2 do
       params:set("tran prob "..i, math.random(0,100))
@@ -1081,8 +1030,7 @@ function randomize_some()
   end
   bang()
   redraw()
-  grid_constant()
-  grid_redraw()
+  grid_dirty = true
 end
 
 -- pack all maths parameters into a volatile preset
@@ -1115,7 +1063,7 @@ function new_preset_unpack(set)
   new_sel_clockdiv = new_preset_pool[set].new_sel_clockdiv
   bang()
   redraw()
-  grid_constant()
+  grid_dirty = true
 end
 
 function preset_remove(set)
@@ -1142,6 +1090,7 @@ end
 
 -- save snapshots as presets
 -- cannibalized from @justmat
+-- FIX SAVE params for w/syn and engine?
 
 function savestate()
   local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "w+")
@@ -1159,8 +1108,6 @@ function savestate()
     io.write(new_preset_pool[i].v2_octave .. "\n")
     io.write(new_preset_pool[i].new_clockdiv .. "\n")
   end
-  --io.write(params:get("bpm") .. "\n")
-  --io.write(params:get("clock_out") .. "\n")
   io.write(params:get("clock_tempo") .. "\n")
   io.write(params:get("clock_midi_out") .. "\n")
   io.write(params:get("midi ch vox 1") .. "\n")
@@ -1206,8 +1153,6 @@ function loadstate()
       load_tran_prob_2 = tonumber(io.read())
       if load_bpm == nil and load_clock == nil and load_ch_1 == nil and
       load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
-        --params:set("bpm", 110)
-        --params:set("clock_out", 1)
         params:set("clock_tempo", 110)
         params:set("clock_midi_out", 1)
         params:set("midi ch vox 1", 1)
@@ -1232,6 +1177,6 @@ function loadstate()
       print("invalid data file")
     end
     io.close(file)
-    grid_constant()
+    grid_dirty = true
   end
 end
