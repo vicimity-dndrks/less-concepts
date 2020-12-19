@@ -111,22 +111,13 @@ for i = 1,9 do
   new_preset_pool[i].new_high = {}
   new_preset_pool[i].v1_octave = {}
   new_preset_pool[i].v2_octave = {}
+  new_preset_pool[i].sel_ppqn_div = {}
 end
 
 local sel_ppqn_div = 5
 local ppqn_divisions = {1/4  , 1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
 local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
 ppqn_counter = 1
---local new_sel_clockdiv = 3
-
---[[
-  local beatclock = include "lib/beatclock-crow"
-clk = beatclock.new()
-clk_midi = midi.connect()
-clk_midi.event = function(data) clk:process_midi(data) end
-
-clk.on_select_external = function() clk:reset() end --from nattog
---]]
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -258,7 +249,6 @@ end
 
 local function iterate()
   if ppqn_counter >= 96 / ppqn_divisions[sel_ppqn_div] then
-    --print(math.floor(ppqn_divisions[sel_ppqn_div]))
     ppqn_counter = 0
     for i = 1,2 do notes_off(i) end
     seed = next_seed
@@ -275,7 +265,6 @@ local function iterate()
             random_note[i].add = 0
           end
           if params:get("output") == 1 then
-            print(scaled)
             engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
             m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),127,voice[i].ch)
           elseif params:get("output") == 2 then
@@ -548,7 +537,7 @@ function init()
             {0,1,4,5,7,9,10,12,13,16,17,19,21,22,24,25,28,29,31,33,35,36,37,40,41,43,45,47,48,49,52,53},
             {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31} }
   
-  names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
+  --names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 
   params:set("wsyn_ar_mode", 2)
 
@@ -635,7 +624,7 @@ if screen_focus % 2 == 1 then
       elseif edit == "lc_gate_probs" then
         params:set("gate prob 1", math.min(100,(math.max(params:get("gate prob 1") + d,0))))
       elseif edit == "low/high" then
-        new_low = math.min(32,(math.max(new_low + d,1))) --FIX GLITCH!!!
+        new_low = math.min(32,(math.max(new_low + d,1)))
         for i=1,16 do
           g:led(i,4,0)
           g:led(i,5,0)
@@ -644,16 +633,14 @@ if screen_focus % 2 == 1 then
           elseif new_low > 16 then
             g:led(new_low-16,5,15)
           end
-          --g:refresh()
-          grid_dirty = true --new
+          grid_dirty = true
         end
       elseif edit == "octaves" then
         voice[1].octave = math.min(3,(math.max(voice[1].octave + d,-3)))
         for i=10,16 do
           g:led(i,1,0)
           g:led(voice[1].octave+13,1,15)
-          --g:refresh()
-          grid_dirty = true --new
+          grid_dirty = true
         end
       elseif edit == "lc_bits" then
         voice[1].bit = math.min(8,(math.max(voice[1].bit - d,0)))
@@ -672,7 +659,7 @@ if screen_focus % 2 == 1 then
       elseif edit == "rand_prob" then
         params:set("tran prob 2", math.min(100,(math.max(params:get("tran prob 2") + d,0))))
       elseif edit == "low/high" then
-        new_high = math.min(32,(math.max(new_high + d,1))) -- FIX GLITCH!!!
+        new_high = math.min(32,(math.max(new_high + d,1)))
         for i=1,16 do
           g:led(i,6,0)
           g:led(i,7,0)
@@ -681,7 +668,6 @@ if screen_focus % 2 == 1 then
           elseif new_high > 16 then
             g:led(new_high-16,7,15)
           end
-          --g:refresh()
           grid_dirty = true --new
         end
       elseif edit == "octaves" then
@@ -689,7 +675,6 @@ if screen_focus % 2 == 1 then
         for i=10,16 do
           g:led(i,2,0)
           g:led(voice[2].octave+13,2,15)
-          --g:refresh()
           grid_dirty = true --new
         end
       elseif edit == "lc_bits" then
@@ -1053,8 +1038,7 @@ function new_preset_pack(set)
   new_preset_pool[set].new_high = new_high
   new_preset_pool[set].v1_octave = voice[1].octave
   new_preset_pool[set].v2_octave = voice[2].octave
-  --new_preset_pool[set].new_clockdiv = new_clockdiv
-  --new_preset_pool[set].new_sel_clockdiv = new_sel_clockdiv
+  new_preset_pool[set].sel_ppqn_div = sel_ppqn_div
 end
 
 function new_preset_unpack(set)
@@ -1068,8 +1052,7 @@ function new_preset_unpack(set)
   new_high = new_preset_pool[set].new_high
   voice[1].octave = new_preset_pool[set].v1_octave
   voice[2].octave = new_preset_pool[set].v2_octave
-  --new_clockdiv = new_preset_pool[set].new_clockdiv
-  --new_sel_clockdiv = new_preset_pool[set].new_sel_clockdiv
+  sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
   bang()
   redraw()
   grid_dirty = true
@@ -1085,8 +1068,7 @@ function preset_remove(set)
     new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
     new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
     new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
-    --new_preset_pool[i].new_clockdiv = new_preset_pool[i+1].new_clockdiv
-    --new_preset_pool[i].new_sel_clockdiv = new_preset_pool[i+1].new_sel_clockdiv
+    new_preset_pool[i].sel_ppqn_div = new_preset_pool[i+1].sel_ppqn_div
   end
   if selected_preset > 1 and selected_preset < preset_count then
     selected_preset = selected_preset
@@ -1101,8 +1083,8 @@ end
 -- cannibalized from @justmat
 -- FIX SAVE params for w/syn and engine?
 
-function savestate()
-  local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "w+")
+function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
+  local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "w+")
   io.output(file)
   io.write("permanence".."\n")
   io.write(preset_count.."\n")
@@ -1115,7 +1097,7 @@ function savestate()
     io.write(new_preset_pool[i].new_high .. "\n")
     io.write(new_preset_pool[i].v1_octave .. "\n")
     io.write(new_preset_pool[i].v2_octave .. "\n")
-    --io.write(new_preset_pool[i].new_clockdiv .. "\n")
+    io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
   end
   io.write(params:get("clock_tempo") .. "\n")
   io.write(params:get("clock_midi_out") .. "\n")
@@ -1130,8 +1112,8 @@ function savestate()
   io.close(file)
 end
 
-function loadstate()
-  local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "r")
+function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
+  local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "r")
   if file then
     io.input(file)
     if io.read() == "permanence" then
@@ -1148,7 +1130,7 @@ function loadstate()
         new_preset_pool[i].new_high = tonumber(io.read())
         new_preset_pool[i].v1_octave = tonumber(io.read())
         new_preset_pool[i].v2_octave = tonumber(io.read())
-        --new_preset_pool[i].new_clockdiv = tonumber(io.read())
+        new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
       end
       load_bpm = tonumber(io.read())
       load_clock = tonumber(io.read())
@@ -1169,8 +1151,6 @@ function loadstate()
         params:set("scale", 1)
         params:set("global transpose", 0)
       else
-        --params:set("bpm", load_bpm)
-        --params:set("clock_out", load_clock)
         params:set("clock_tempo", load_bpm)
         params:set("clock_midi_out", load_clock)
         params:set("midi ch vox 1", load_ch_1)
