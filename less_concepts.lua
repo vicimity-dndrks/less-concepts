@@ -109,6 +109,8 @@ for i = 1,9 do
 end
 
 local new_clockdiv = 1
+local ppqn_divisions = {2, 1.5, 1, 0.5, 0.25}
+ppqn_counter = 1
 local new_sel_clockdiv = 3
 
 --[[
@@ -249,87 +251,91 @@ end
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
 
 local function iterate()
-  for i = 1,2 do notes_off(i) end
-  seed = next_seed
-  bang()
-  scale(new_low,new_high,seed)
-  for i = 1,2 do
-    if seed_as_binary[voice[i].bit] == 1 then
-      random_gate[i].comparator = math.random(0,100)
-      if random_gate[i].comparator < random_gate[i].probability then
-        random_note[i].comparator = math.random(0,100)
-        if random_note[i].comparator < random_note[i].probability then
-          random_note[i].add = random_note[i].tran
-        else
-          random_note[i].add = 0
-        end
-        if params:get("output") == 1 then
-          engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
-          m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),127,voice[i].ch)
-        elseif params:get("output") == 2 then
-          if i == 1 then
-            crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[2].execute()
-          elseif i == 2 then
-            crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[2].execute()
+  if ppqn_counter >= 96 / new_clockdiv then
+    --print(ppqn_counter)
+    ppqn_counter = 0
+    for i = 1,2 do notes_off(i) end
+    seed = next_seed
+    bang()
+    scale(new_low,new_high,seed)
+    for i = 1,2 do
+      if seed_as_binary[voice[i].bit] == 1 then
+        random_gate[i].comparator = math.random(0,100)
+        if random_gate[i].comparator < random_gate[i].probability then
+          random_note[i].comparator = math.random(0,100)
+          if random_note[i].comparator < random_note[i].probability then
+            random_note[i].add = random_note[i].tran
+          else
+            random_note[i].add = 0
           end
-        elseif params:get("output") == 3 then
-          if i == 1 then
-            crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[i+1].execute()
-          elseif i == 2 then
-            crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[i+2].execute()
-          end
-        elseif params:get("output") == 4 then
-          if i == 1 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
-          elseif i == 2 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
-          end
-         elseif params:get("output") == 5 then
-          if i == 1 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
-            crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[i+1].execute()
-          elseif i == 2 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
-            crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[i+2].execute()
-          end
-        elseif params:get("output") == 6 then
-          engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
-          if i == 1 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
-            crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[i+1].execute()
-          elseif i == 2 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
-            crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[i+2].execute()
-          end
-          elseif params:get("output") == 7 then
+          if params:get("output") == 1 then
+            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
+            m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),127,voice[i].ch)
+          elseif params:get("output") == 2 then
             if i == 1 then
-              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
+              crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[2].execute()
             elseif i == 2 then
-              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12 ..", " .. 5 .. ")")
+              crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[2].execute()
+            end
+          elseif params:get("output") == 3 then
+            if i == 1 then
+              crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[i+1].execute()
+            elseif i == 2 then
+              crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[i+2].execute()
+            end
+          elseif params:get("output") == 4 then
+            if i == 1 then
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+            elseif i == 2 then
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+            end
+           elseif params:get("output") == 5 then
+            if i == 1 then
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+              crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[i+1].execute()
+            elseif i == 2 then
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+              crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[i+2].execute()
+            end
+          elseif params:get("output") == 6 then
+            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
+            if i == 1 then
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+              crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[i+1].execute()
+            elseif i == 2 then
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+              crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[i+2].execute()
+            end
+            elseif params:get("output") == 7 then
+              if i == 1 then
+                crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
+              elseif i == 2 then
+                crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12 ..", " .. 5 .. ")")
+            end
           end
+          table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
         end
-        table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
-      end
     end
 
-  -- EVENTS FOR R E F R A I N
-    if seed_as_binary[track[i].bit] == 1 then
-      random_gate[i+2].comparator = math.random(0,100)
-      if random_gate[i+2].comparator < random_gate[i+2].probability then
-        refrain.reset(i,pass_to_refrain)
+    -- EVENTS FOR R E F R A I N
+      if seed_as_binary[track[i].bit] == 1 then
+        random_gate[i+2].comparator = math.random(0,100)
+        if random_gate[i+2].comparator < random_gate[i+2].probability then
+          refrain.reset(i,pass_to_refrain)
+        end
       end
     end
+    redraw()
+    grid_dirty = true
   end
-  redraw()
-  grid_dirty = true
 end
 
 function change(s)
@@ -429,7 +435,8 @@ end
 
 function pulse()
   while true do
-    clock.sync(1/new_clockdiv)
+    clock.sync(1/96)
+    ppqn_counter = ppqn_counter + 1
     iterate()
   end
 end
@@ -653,7 +660,6 @@ if screen_focus % 2 == 1 then
         new_sel_clockdiv = util.clamp(new_sel_clockdiv + d, 1, 5)
         new_clockdiv = clockdivisions[new_sel_clockdiv]
         redraw()
-        print(tempclockdiv)
       end
     elseif n == 3 then
       if edit == "lc_gate_probs" then
@@ -1179,4 +1185,8 @@ function loadstate()
     io.close(file)
     grid_dirty = true
   end
+end
+
+function rerun()
+  norns.script.load(norns.state.script)
 end
