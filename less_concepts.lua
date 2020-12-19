@@ -114,6 +114,7 @@ for i = 1,9 do
   new_preset_pool[i].sel_ppqn_div = {}
 end
 
+local ppqn = 96
 local sel_ppqn_div = 5
 local ppqn_divisions = {1/4  , 1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
 local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
@@ -248,7 +249,7 @@ end
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
 
 local function iterate()
-  if ppqn_counter >= 96 / ppqn_divisions[sel_ppqn_div] then
+  if ppqn_counter >= ppqn / ppqn_divisions[sel_ppqn_div] then
     ppqn_counter = 0
     for i = 1,2 do notes_off(i) end
     seed = next_seed
@@ -431,7 +432,7 @@ end
 
 function pulse()
   while true do
-    clock.sync(1/96)
+    clock.sync(1/ppqn)
     ppqn_counter = ppqn_counter + 1
     iterate()
   end
@@ -1086,7 +1087,7 @@ end
 function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
   local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "w+")
   io.output(file)
-  io.write("permanence".."\n")
+  io.write("new_permanence".."\n")
   io.write(preset_count.."\n")
   for i = 1,preset_count do
     io.write(new_preset_pool[i].seed .. "\n")
@@ -1116,7 +1117,8 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
   local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "r")
   if file then
     io.input(file)
-    if io.read() == "permanence" then
+    filetype = io.read()
+    if filetype == "new_permanence" then
       preset_count = tonumber(io.read())
       if preset_count > 0 then
         selected_preset = 1
@@ -1162,6 +1164,56 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
         params:set("tran prob 1", load_tran_prob_1)
         params:set("tran prob 2", load_tran_prob_2)
       end
+  elseif filetype == "permanence" then
+      preset_count = tonumber(io.read())
+      if preset_count > 0 then
+        selected_preset = 1
+      end
+      for i = 1,preset_count do
+        new_preset_pool[i].seed = tonumber(io.read())
+        new_preset_pool[i].rule = tonumber(io.read())
+        new_preset_pool[i].v1_bit = tonumber(io.read())
+        new_preset_pool[i].v2_bit = tonumber(io.read())
+        new_preset_pool[i].new_low = tonumber(io.read())
+        new_preset_pool[i].new_high = tonumber(io.read())
+        new_preset_pool[i].v1_octave = tonumber(io.read())
+        new_preset_pool[i].v2_octave = tonumber(io.read())
+      end
+      load_bpm = tonumber(io.read())
+      load_clock = tonumber(io.read())
+      load_ch_1 = tonumber(io.read())
+      load_ch_2 = tonumber(io.read())
+      load_scale = tonumber(io.read())
+      load_global_trans = tonumber(io.read())
+      load_tran_1 = tonumber(io.read())
+      load_tran_prob_1 = tonumber(io.read())
+      load_tran_2 = tonumber(io.read())
+      load_tran_prob_2 = tonumber(io.read())
+      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and 
+      load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
+        --params:set("bpm", 110)
+        --params:set("clock_out", 1)
+        params:set("clock_tempo", 110)
+        params:set("clock_midi_out", 1)
+        params:set("midi ch vox 1", 1)
+        params:set("midi ch vox 2", 1)
+        params:set("scale", 1)
+        params:set("global transpose", 0)
+      else
+        --params:set("bpm", load_bpm)
+        --params:set("clock_out", load_clock)
+        params:set("clock_tempo", load_bpm)
+        params:set("clock_midi_out", load_clock)
+        params:set("midi ch vox 1", load_ch_1)
+        params:set("midi ch vox 2", load_ch_2)
+        params:set("scale", load_scale)
+        params:set("global transpose", load_global_trans)
+        params:set("transpose 1", load_tran_1)
+        params:set("transpose 2", load_tran_2)
+        params:set("tran prob 1", load_tran_prob_1)
+        params:set("tran prob 2", load_tran_prob_2)
+      end
+      sel_ppqn_div = 5
     else
       print("invalid data file")
     end
