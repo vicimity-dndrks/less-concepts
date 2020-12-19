@@ -33,6 +33,11 @@
 -- (14,8): clear selected
 -- (1,8) to (8,8): snapshots
 -- (9,8) to (13,8): clock divisions
+-- (9,8): lower two steps of division (1/4 - 1/2)
+-- (10,8): lower one step of division (1/4 - 1/4T)
+-- (11,8): reeturn to default division (1/4)
+-- (12,8): raise one step of division (1/4 - 1/8T)
+-- (9,8): raise two steps of division (1/4 - 1/8)
 --
 -- seek.
 -- think.
@@ -108,10 +113,11 @@ for i = 1,9 do
   new_preset_pool[i].v2_octave = {}
 end
 
-local new_clockdiv = 1
-local ppqn_divisions = {2, 1.5, 1, 0.5, 0.25}
+local sel_ppqn_div = 5
+local ppqn_divisions = {1/4  , 1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
+local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
 ppqn_counter = 1
-local new_sel_clockdiv = 3
+--local new_sel_clockdiv = 3
 
 --[[
   local beatclock = include "lib/beatclock-crow"
@@ -251,8 +257,8 @@ end
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
 
 local function iterate()
-  if ppqn_counter >= 96 / new_clockdiv then
-    --print(ppqn_counter)
+  if ppqn_counter >= 96 / ppqn_divisions[sel_ppqn_div] then
+    --print(math.floor(ppqn_divisions[sel_ppqn_div]))
     ppqn_counter = 0
     for i = 1,2 do notes_off(i) end
     seed = next_seed
@@ -269,6 +275,7 @@ local function iterate()
             random_note[i].add = 0
           end
           if params:get("output") == 1 then
+            print(scaled)
             engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
             m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),127,voice[i].ch)
           elseif params:get("output") == 2 then
@@ -523,23 +530,23 @@ function init()
   passersby.add_params()
   bang()
 
-  notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,43,45,47,48},
-            {0,2,3,5,7,8,10,12,14,15,17,19,20,22,24,26,27,29,31,32,34,36,38,39,41,43,44,46,48},
-            {0,2,3,5,7,9,10,12,14,15,17,19,21,22,24,26,27,29,31,33,34,36,38,39,41,43,45,46,48},
-            {0,1,3,5,7,8,10,12,13,15,17,19,20,22,24,25,27,29,31,32,34,36,37,39,41,43,44,46,48},
-            {0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31,33,35,36,38,40,42,43,45,47,48},
-            {0,2,4,5,7,9,10,12,14,16,17,19,21,22,24,26,28,29,31,33,34,36,38,40,41,43,45,46,48},
-            {0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,43,45,48,50,52,55,57,60,62,64,67},
-            {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67},
-            {0,2,5,7,10,12,14,17,19,22,24,26,29,31,34,36,38,41,43,46,48,50,53,55,58,60,62,65,67},
-            {0,3,5,8,10,12,15,17,20,22,24,27,29,32,34,36,39,41,44,46,48,51,53,56,58,60,63,65,68},
-            {0,2,5,7,9,12,14,17,19,21,24,26,29,31,33,36,38,41,43,45,48,50,53,55,57,60,62,65,67},
-            {0,1,3,6,7,8,11,12,13,15,18,19,20,23,24,25,27,30,31,32,35,36,37,39,42,43,44,47,48},
-            {0,1,4,6,7,8,11,12,13,16,18,19,20,23,24,25,28,30,31,32,35,36,37,40,42,43,44,47,48},
-            {0,1,4,6,7,9,11,12,13,16,18,19,21,23,24,25,28,30,31,33,35,36,37,40,42,43,45,47,48},
-            {0,1,4,5,7,8,11,12,13,16,17,19,20,23,24,25,28,29,31,32,35,36,37,40,41,43,44,47,48},
-            {0,1,4,5,7,9,10,12,13,16,17,19,21,22,24,25,28,29,31,33,35,36,37,40,41,43,45,47,48},
-            {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28} }
+  notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,43,45,47,48,50,52,53},
+            {0,2,3,5,7,8,10,12,14,15,17,19,20,22,24,26,27,29,31,32,34,36,38,39,41,43,44,46,48,50,51,53},
+            {0,2,3,5,7,9,10,12,14,15,17,19,21,22,24,26,27,29,31,33,34,36,38,39,41,43,45,46,48,50,51,53},
+            {0,1,3,5,7,8,10,12,13,15,17,19,20,22,24,25,27,29,31,32,34,36,37,39,41,43,44,46,48,49,51,53},
+            {0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31,33,35,36,38,40,42,43,45,47,48,50,52,54},
+            {0,2,4,5,7,9,10,12,14,16,17,19,21,22,24,26,28,29,31,33,34,36,38,40,41,43,45,46,48,50,52,53},
+            {0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,43,45,48,50,52,55,57,60,62,64,67,69,71,74},
+            {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67,70,72,74},
+            {0,2,5,7,10,12,14,17,19,22,24,26,29,31,34,36,38,41,43,46,48,50,53,55,58,60,62,65,67,69,72,74},
+            {0,3,5,8,10,12,15,17,20,22,24,27,29,32,34,36,39,41,44,46,48,51,53,56,58,60,63,65,68,71,73,76},
+            {0,2,5,7,9,12,14,17,19,21,24,26,29,31,33,36,38,41,43,45,48,50,53,55,57,60,62,65,67,69,72,74},
+            {0,1,3,6,7,8,11,12,13,15,18,19,20,23,24,25,27,30,31,32,35,36,37,39,42,43,44,47,48,49,51,54},
+            {0,1,4,6,7,8,11,12,13,16,18,19,20,23,24,25,28,30,31,32,35,36,37,40,42,43,44,47,48,49,52,54},
+            {0,1,4,6,7,9,11,12,13,16,18,19,21,23,24,25,28,30,31,33,35,36,37,40,42,43,45,47,48,49,52,54},
+            {0,1,4,5,7,8,11,12,13,16,17,19,20,23,24,25,28,29,31,32,35,36,37,40,41,43,44,47,48,49,52,53},
+            {0,1,4,5,7,9,10,12,13,16,17,19,21,22,24,25,28,29,31,33,35,36,37,40,41,43,45,47,48,49,52,53},
+            {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31} }
   
   names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 
@@ -656,9 +663,7 @@ if screen_focus % 2 == 1 then
         rule = new_rule
         bang()
       elseif edit == "clock" then
-        local clockdivisions = {0.25, 0.5, 1, 2, 4}
-        new_sel_clockdiv = util.clamp(new_sel_clockdiv + d, 1, 5)
-        new_clockdiv = clockdivisions[new_sel_clockdiv]
+        sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
         redraw()
       end
     elseif n == 3 then
@@ -732,8 +737,7 @@ function redraw()
     --ADDED: screen info for clock divider
     screen.move(53,62)
     screen.level(edit == "clock" and 15 or 2)
-    screen.text("1/".. math.floor(4 * new_clockdiv))
-  
+    screen.text(ppqn_names[sel_ppqn_div])
     screen.move(0,62)
     screen.level(edit == "lc_bits" and 15 or 2)
     for i = 1,8 do
@@ -779,28 +783,23 @@ g.key = function(x,y,z)
   -- ADDED: first steps to alter clock divider for nice interaction
   if y == 8 and x > 8 and x < 14 then
     if y == 8 and x == 11 and z == 1 then
-      new_clockdiv = 1
-      new_sel_clockdiv = 3
+      sel_ppqn_div = math.floor(#ppqn_divisions / 2)
     end
 
     if y == 8 and x == 10 and z == 1then
-      new_clockdiv = 0.5
-      new_sel_clockdiv = 2
+      sel_ppqn_div = util.clamp(sel_ppqn_div - 1, 1, #ppqn_divisions) 
     end
 
     if y == 8 and x == 9 and z == 1then
-      new_clockdiv = 0.25
-      new_sel_clockdiv = 1
+      sel_ppqn_div = util.clamp(sel_ppqn_div - 2, 1, #ppqn_divisions)
     end
 
     if y == 8 and x == 12 and z == 1then
-      new_clockdiv = 2
-      new_sel_clockdiv = 4
+      sel_ppqn_div = util.clamp(sel_ppqn_div + 1, 1, #ppqn_divisions)
     end
 
     if y == 8 and x == 13 and z == 1then
-      new_clockdiv = 4
-      new_sel_clockdiv = 5
+      sel_ppqn_div = util.clamp(sel_ppqn_div + 2, 1, #ppqn_divisions)
     end
     grid_dirty = true
     redraw()
@@ -889,9 +888,11 @@ g.key = function(x,y,z)
     elseif x == 11 then
       voice[2].octave = math.random(-2,2)
     elseif x == 13 then
-      -- implement random clock div (lower clock rate)
+      if sel_ppqn_div ~= 1 then
+        sel_ppqn_div = sel_ppqn_div - math.random(1, sel_ppqn_div - 1)
+      end
     elseif x == 14 then
-      -- implement random clock div (higher clock rate)
+      sel_ppqn_div = math.random(sel_ppqn_div, #ppqn_divisions)
     elseif x == 16 then
       randomize_all()
     end
@@ -983,7 +984,7 @@ function grid_redraw()
   for i=9, 13 do
     g:led(i, 8, 4)
   end
-  g:led(8 + new_sel_clockdiv, 8, 15)
+  g:led(8 + 3, 8, 15) --g:led(8 + new_sel_clockdiv, 8, 15)
   g:refresh()
   grid_dirty = true
 end
@@ -1031,6 +1032,8 @@ function randomize_some()
   elseif edit == "lc_bits" then
     voice[1].bit = math.random(0,8)
     voice[2].bit = math.random(0,8)
+  elseif edit == "clock" then
+    sel_ppqn_div = math.random(1, #ppqn_divisions)
   elseif edit == "presets" then
     randomize_all()
   end
@@ -1050,8 +1053,8 @@ function new_preset_pack(set)
   new_preset_pool[set].new_high = new_high
   new_preset_pool[set].v1_octave = voice[1].octave
   new_preset_pool[set].v2_octave = voice[2].octave
-  new_preset_pool[set].new_clockdiv = new_clockdiv
-  new_preset_pool[set].new_sel_clockdiv = new_sel_clockdiv
+  --new_preset_pool[set].new_clockdiv = new_clockdiv
+  --new_preset_pool[set].new_sel_clockdiv = new_sel_clockdiv
 end
 
 function new_preset_unpack(set)
@@ -1065,8 +1068,8 @@ function new_preset_unpack(set)
   new_high = new_preset_pool[set].new_high
   voice[1].octave = new_preset_pool[set].v1_octave
   voice[2].octave = new_preset_pool[set].v2_octave
-  new_clockdiv = new_preset_pool[set].new_clockdiv
-  new_sel_clockdiv = new_preset_pool[set].new_sel_clockdiv
+  --new_clockdiv = new_preset_pool[set].new_clockdiv
+  --new_sel_clockdiv = new_preset_pool[set].new_sel_clockdiv
   bang()
   redraw()
   grid_dirty = true
@@ -1082,8 +1085,8 @@ function preset_remove(set)
     new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
     new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
     new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
-    new_preset_pool[i].new_clockdiv = new_preset_pool[i+1].new_clockdiv
-    new_preset_pool[i].new_sel_clockdiv = new_preset_pool[i+1].new_sel_clockdiv
+    --new_preset_pool[i].new_clockdiv = new_preset_pool[i+1].new_clockdiv
+    --new_preset_pool[i].new_sel_clockdiv = new_preset_pool[i+1].new_sel_clockdiv
   end
   if selected_preset > 1 and selected_preset < preset_count then
     selected_preset = selected_preset
@@ -1112,7 +1115,7 @@ function savestate()
     io.write(new_preset_pool[i].new_high .. "\n")
     io.write(new_preset_pool[i].v1_octave .. "\n")
     io.write(new_preset_pool[i].v2_octave .. "\n")
-    io.write(new_preset_pool[i].new_clockdiv .. "\n")
+    --io.write(new_preset_pool[i].new_clockdiv .. "\n")
   end
   io.write(params:get("clock_tempo") .. "\n")
   io.write(params:get("clock_midi_out") .. "\n")
@@ -1145,7 +1148,7 @@ function loadstate()
         new_preset_pool[i].new_high = tonumber(io.read())
         new_preset_pool[i].v1_octave = tonumber(io.read())
         new_preset_pool[i].v2_octave = tonumber(io.read())
-        new_preset_pool[i].new_clockdiv = tonumber(io.read())
+        --new_preset_pool[i].new_clockdiv = tonumber(io.read())
       end
       load_bpm = tonumber(io.read())
       load_clock = tonumber(io.read())
