@@ -471,21 +471,21 @@ function init()
         crow.ii.jf.mode(0)
       elseif value == 2 then
         crow.ii.jf.mode(0)
-        crow.output[2].action = "{to(5,0),to(0,0.25)}"
+        crow.output[2].action = "{to(5,0),to(0,0.05)}"
       elseif value == 3 then
         crow.ii.jf.mode(0)
-        crow.output[2].action = "{to(5,0),to(0,0.25)}"
-        crow.output[4].action = "{to(5,0),to(0,0.25)}"
+        crow.output[2].action = "{to(5,0),to(0,0.05)}"
+        crow.output[4].action = "{to(5,0),to(0,0.05)}"
       elseif value == 4 then
         crow.ii.jf.mode(1)
       elseif value == 5 then
         crow.ii.jf.mode(1)
-        crow.output[2].action = "{to(5,0),to(0,0.25)}"
-        crow.output[4].action = "{to(5,0),to(0,0.25)}"
+        crow.output[2].action = "{to(5,0),to(0,0.05)}"
+        crow.output[4].action = "{to(5,0),to(0,0.05)}"
       elseif value == 6 then
         crow.ii.jf.mode(1)
-        crow.output[2].action = "{to(5,0),to(0,0.25)}"
-        crow.output[4].action = "{to(5,0),to(0,0.25)}"
+        crow.output[2].action = "{to(5,0),to(0,0.05)}"
+        crow.output[4].action = "{to(5,0),to(0,0.05)}"
       elseif value == 7 then
         crow.ii.jf.mode(0)
         crow.send("ii.wsyn.ar_mode(" .. 1 .. ")")
