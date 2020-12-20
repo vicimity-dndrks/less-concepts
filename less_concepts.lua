@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.1.2 (crow) @dan_derks (v.2.1.3b (w/syn + clock + mutes) @linusschrab)
+-- v2.1.2 (crow) @dan_derks
 -- llllllll.co/t/less-concepts/
 --
 -- hold key 1: switch between
@@ -33,11 +33,9 @@
 -- (14,8): clear selected
 -- (1,8) to (8,8): snapshots
 -- (9,8) to (13,8): clock divisions
--- (9,8): lower two steps of division (1/4 - 1/2)
 -- (10,8): lower one step of division (1/4 - 1/4T)
 -- (11,8): reeturn to default division (1/4)
 -- (12,8): raise one step of division (1/4 - 1/8T)
--- (9,8): raise two steps of division (1/4 - 1/8)
 --
 -- seek.
 -- think.
@@ -63,12 +61,6 @@ for i = 1,2 do
   voice[i].active_notes = {}
   voice[i].ch = 1
 end
---local v1_bit = 1
---local v2_bit = 5
---local v1_octave = 0
---local v2_octave = 0
---local ch_1 = 1
---local ch_2 = 1
 local semi = 0
 local preset_count = 0
 local active_notes_v1 = {}
@@ -255,7 +247,7 @@ local function iterate()
     seed = next_seed
     bang()
     scale(new_low,new_high,seed)
-    for i = 1,2 do
+    for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
       if seed_as_binary[voice[i].bit] == 1 then
         random_gate[i].comparator = math.random(0,100)
         if random_gate[i].comparator < random_gate[i].probability then
@@ -266,8 +258,8 @@ local function iterate()
             random_note[i].add = 0
           end
           if params:get("output") == 1 then
-            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
-            m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),127,voice[i].ch)
+            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
+            m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,voice[i].ch)
           elseif params:get("output") == 2 then
             if i == 1 then
               crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
@@ -286,36 +278,36 @@ local function iterate()
             end
           elseif params:get("output") == 4 then
             if i == 1 then
-              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,8)
             elseif i == 2 then
-              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,8)
             end
            elseif params:get("output") == 5 then
             if i == 1 then
-              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,8)
               crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
               crow.output[i+1].execute()
             elseif i == 2 then
-              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,8)
               crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
               crow.output[i+2].execute()
             end
           elseif params:get("output") == 6 then
-            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),127)
+            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
             if i == 1 then
-              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,8)
               crow.output[i].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
               crow.output[i+1].execute()
             elseif i == 2 then
-              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,5)
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12,8)
               crow.output[i+1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
               crow.output[i+2].execute()
             end
             elseif params:get("output") == 7 then
               if i == 1 then
-                crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
+                crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 8 .. ")")
               elseif i == 2 then
-                crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12 ..", " .. 5 .. ")")
+                crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12 ..", " .. 8 .. ")")
             end
           end
           table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
@@ -460,7 +452,6 @@ function init()
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   grid_dirty = true
-  --g:refresh()
   params:add_number("set", "set", 1,100,1)
   params:set_action("set", function (x) selected_set = x end)
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
@@ -497,6 +488,8 @@ function init()
         crow.output[4].action = "{to(5,0),to(0,0.25)}"
       elseif value == 7 then
         crow.ii.jf.mode(0)
+        crow.send("ii.wsyn.ar_mode(" .. 1 .. ")")
+        params:set("wsyn_ar_mode", 2) --set ar mode to on when w/syn is selected
       end
     end}
 
@@ -540,8 +533,6 @@ function init()
   
   --names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 
-  params:set("wsyn_ar_mode", 2)
-
   clock.run(pulse)
 
 end
@@ -558,7 +549,7 @@ if screen_focus % 2 == 1 then
   if n == 2 and z == 1 then
     KEY2 = true
     bang()
-    redraw()
+    --redraw()
     if preset_count < 8 and edit ~= "presets" then
       preset_count = preset_count + 1
       new_preset_pack(preset_count)
@@ -570,7 +561,7 @@ if screen_focus % 2 == 1 then
   elseif n == 2 and z == 0 then
     KEY2 = false
     bang()
-    redraw()
+    --redraw()
   end
   if n == 3 and z == 1 then
     KEY3 = true
@@ -596,8 +587,9 @@ if screen_focus % 2 == 1 then
   elseif n == 3 and z == 0 then
     KEY3 = false
     bang()
-    redraw()
+    --redraw()
   end
+  redraw()
 elseif screen_focus % 2 == 0 then
 -- PUT OTHER SCRIPT HARDWARE CONTROLS HERE
 refrain.key(n,z)
@@ -766,26 +758,16 @@ g = grid.connect()
 
 g.key = function(x,y,z)
 
-  -- ADDED: first steps to alter clock divider for nice interaction
   if y == 8 and x > 8 and x < 14 then
-    if y == 8 and x == 11 and z == 1 then
-      sel_ppqn_div = math.floor(#ppqn_divisions / 2)
-    end
 
     if y == 8 and x == 10 and z == 1then
       sel_ppqn_div = util.clamp(sel_ppqn_div - 1, 1, #ppqn_divisions) 
     end
-
-    if y == 8 and x == 9 and z == 1then
-      sel_ppqn_div = util.clamp(sel_ppqn_div - 2, 1, #ppqn_divisions)
+    if y == 8 and x == 11 and z == 1 then
+      sel_ppqn_div = math.floor(#ppqn_divisions / 2)
     end
-
     if y == 8 and x == 12 and z == 1then
       sel_ppqn_div = util.clamp(sel_ppqn_div + 1, 1, #ppqn_divisions)
-    end
-
-    if y == 8 and x == 13 and z == 1then
-      sel_ppqn_div = util.clamp(sel_ppqn_div + 2, 1, #ppqn_divisions)
     end
     grid_dirty = true
     redraw()
@@ -874,16 +856,14 @@ g.key = function(x,y,z)
     elseif x == 11 then
       voice[2].octave = math.random(-2,2)
     elseif x == 13 then
-      if sel_ppqn_div ~= 1 then
-        sel_ppqn_div = sel_ppqn_div - math.random(1, sel_ppqn_div - 1)
-      end
+      sel_ppqn_div = math.random(1, #ppqn_divisions)
     elseif x == 14 then
-      sel_ppqn_div = math.random(sel_ppqn_div, #ppqn_divisions)
+      sel_ppqn_div = math.random(1, #ppqn_divisions)
+      randomize_all()
     elseif x == 16 then
       randomize_all()
     end
     bang()
-    redraw()
     grid_dirty = true
   end
   if y == 8 and z == 1 then
@@ -929,6 +909,14 @@ function grid_redraw()
     g:led(i,1,0)
     g:led(i,2,0)
   end
+  for i = 1, 8 do
+    if seed_as_binary[i] == 1 then
+      g:led(9-i,1,2)
+      g:led(9-i,2,2)
+    end
+  end
+  g:led(9-voice[1].bit,1,4)
+  g:led(9-voice[2].bit,2,4)
   if seed_as_binary[voice[1].bit] == 1 then
     g:led(9-voice[1].bit,1,15)
   end
@@ -967,12 +955,11 @@ function grid_redraw()
   end
   
   -- ADDED: redraw the led for clockdiv = 1/4
-  for i=9, 13 do
+  for i=10, 12 do
     g:led(i, 8, 4)
   end
   g:led(8 + 3, 8, 15) --g:led(8 + new_sel_clockdiv, 8, 15)
   g:refresh()
-  grid_dirty = true
 end
 
 -- this section is all performative stuff
@@ -991,7 +978,6 @@ function randomize_all()
   voice[1].octave = math.random(-2,2)
   voice[2].octave = math.random(-2,2)
   bang()
-  redraw()
   grid_dirty = true
 end
 
@@ -1024,7 +1010,6 @@ function randomize_some()
     randomize_all()
   end
   bang()
-  redraw()
   grid_dirty = true
 end
 
@@ -1055,7 +1040,6 @@ function new_preset_unpack(set)
   voice[2].octave = new_preset_pool[set].v2_octave
   sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
   bang()
-  redraw()
   grid_dirty = true
 end
 
@@ -1191,8 +1175,6 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
       load_tran_prob_2 = tonumber(io.read())
       if load_bpm == nil and load_clock == nil and load_ch_1 == nil and 
       load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
-        --params:set("bpm", 110)
-        --params:set("clock_out", 1)
         params:set("clock_tempo", 110)
         params:set("clock_midi_out", 1)
         params:set("midi ch vox 1", 1)
@@ -1200,8 +1182,6 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
         params:set("scale", 1)
         params:set("global transpose", 0)
       else
-        --params:set("bpm", load_bpm)
-        --params:set("clock_out", load_clock)
         params:set("clock_tempo", load_bpm)
         params:set("clock_midi_out", load_clock)
         params:set("midi ch vox 1", load_ch_1)
@@ -1213,7 +1193,7 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
         params:set("tran prob 1", load_tran_prob_1)
         params:set("tran prob 2", load_tran_prob_2)
       end
-      sel_ppqn_div = 5
+      sel_ppqn_div = 9 --set default clock div to 1/16 for old saves
     else
       print("invalid data file")
     end
