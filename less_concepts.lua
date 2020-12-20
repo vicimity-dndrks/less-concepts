@@ -958,7 +958,7 @@ function grid_redraw()
   for i=10, 12 do
     g:led(i, 8, 4)
   end
-  g:led(8 + 3, 8, 15) --g:led(8 + new_sel_clockdiv, 8, 15)
+  g:led(8 + 3, 8, 6) --g:led(8 + new_sel_clockdiv, 8, 15)
   g:refresh()
 end
 
