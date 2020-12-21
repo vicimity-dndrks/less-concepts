@@ -370,7 +370,7 @@ end
 refrain = include "lib/refrain"
 
 function wsyn_add_params()
-  params:add_group("W/Syn",10)
+  params:add_group("w/syn",10)
   params:add {
     type = "option",
     id = "wsyn_ar_mode",
@@ -439,14 +439,14 @@ function wsyn_add_params()
     id = "wsyn_randomize",
     name = "Randomize",
     action = function()
-      params:set("wsyn_curve", math.random(-5, 5))
-      params:set("wsyn_ramp", math.random(-5, 5))
-      params:set("wsyn_fm_index", math.random(0, 5))
-      params:set("wsyn_fm_env", math.random(-5, 5))
+      params:set("wsyn_curve", math.random(-50, 50)/10)
+      params:set("wsyn_ramp", math.random(-50, 50)/10)
+      params:set("wsyn_fm_index", math.random(0, 50)/10)
+      params:set("wsyn_fm_env", math.random(-50, 50)/10)
       params:set("wsyn_fm_ratio_num", math.random(1, 20))
       params:set("wsyn_fm_ratio_den", math.random(1, 20))
-      params:set("wsyn_lpg_time", math.random(-5, 5))
-      params:set("wsyn_lpg_symmetry", math.random(-5, 5))
+      params:set("wsyn_lpg_time", math.random(-50, 50)/10)
+      params:set("wsyn_lpg_symmetry", math.random(-50, 50)/10)
     end
   }
 end
@@ -540,38 +540,61 @@ function init()
   end
   params:add_separator("randomization limits")
   params:add_number("seed_clamp_min", "seed min", 0, 255, 0)
-  params:set_action("seed_clamp_min", function(x) seed_clamp_min = x end)
-  params:add_number("seed_clamp_max", "seed max", params:get("seed_clamp_min"), 255, 255)
-  params:set_action("seed_clamp_max", function(x) seed_clamp_max = x end)
-  params:add_number("rule_clamp_min", "rule min", 0, 127, 0)
-  params:set_action("rule_clamp_min", function(x) rule_clamp_min = x end)
-  params:add_number("rule_clamp_max", "rule max", 128, 255, 255)
-  params:set_action("rule_clamp_max", function(x) rule_clamp_max = x end)
+  params:add_number("seed_clamp_max", "seed max", 0, 255, 255)
+  params:add_number("rule_clamp_min", "rule min", 0, 255, 0)
+  params:add_number("rule_clamp_max", "rule max", 0, 255, 255)
+  params:set_action("seed_clamp_min", function(x) 
+    params:set("seed_clamp_max", util.clamp(params:get("seed_clamp_max"), x, 255))
+    seed_clamp_min = x end)
+  params:set_action("seed_clamp_max", function(x) 
+    params:set("seed_clamp_min", util.clamp(params:get("seed_clamp_min"), 0, x))
+    seed_clamp_max = x end)
+  params:set_action("rule_clamp_min", function(x) 
+    params:set("rule_clamp_max", util.clamp(params:get("rule_clamp_max"), x, 255))
+    rule_clamp_min = x end)
+  params:set_action("rule_clamp_max", function(x) 
+    params:set("rule_clamp_min", util.clamp(params:get("rule_clamp_min"), 0, x))
+    rule_clamp_max = x end)
   
   params:add_number("lo_clamp_min", "low min", 1, 32, 1)
-  params:set_action("lo_clamp_min", function(x) lo_clamp_min = x end)
   params:add_number("lo_clamp_max", "low max", 1, 32, 32)
-  params:set_action("lo_clamp_max", function(x) lo_clamp_max = x end)
   params:add_number("hi_clamp_min", "high min", 1, 32, 1)
-  params:set_action("hi_clamp_min", function(x) hi_clamp_min = x end)
   params:add_number("hi_clamp_max", "high max", 1, 32, 32)
-  params:set_action("hi_clamp_min", function(x) hi_clamp_min = x end)
-
+  params:set_action("lo_clamp_min", function(x) 
+    params:set("lo_clamp_max", util.clamp(params:get("lo_clamp_max"), x, 32))
+    lo_clamp_min = x end)
+  params:set_action("lo_clamp_max", function(x) 
+    params:set("lo_clamp_min", util.clamp(params:get("lo_clamp_min"), 1, x))
+    lo_clamp_max = x end)
+  params:set_action("hi_clamp_min", function(x) 
+    params:set("hi_clamp_max", util.clamp(params:get("hi_clamp_max"), x, 32))
+    hi_clamp_min = x end)
+  params:set_action("hi_clamp_max", function(x) 
+    params:set("hi_clamp_min", util.clamp(params:get("hi_clamp_min"), 1, x))
+    hi_clamp_min = x end)
 
   params:add_number("oct_clamp_min", "octave min", -3, 3, -2)
-  params:set_action("oct_clamp_min", function(x) oct_clamp_min = x end)
   params:add_number("oct_clamp_max", "octave max", -3, 3, 2)
-  params:set_action("oct_clamp_max", function(x) oct_clamp_max = x end)
+  params:set_action("oct_clamp_min", function(x) 
+    params:set("oct_clamp_max", util.clamp(params:get("oct_clamp_max"), x, 3))
+    oct_clamp_min = x end)
+  params:set_action("oct_clamp_max", function(x) 
+    params:set("oct_clamp_min", util.clamp(params:get("oct_clamp_min"), -3, x))
+    oct_clamp_max = x end)
   
   params:add_option("time_clamp_min", "time division min", ppqn_names, 1)
-  params:set_action("time_clamp_min", function(x) time_clamp_min = x end)
   params:add_option("time_clamp_max", "time division min", ppqn_names, #ppqn_divisions)
-  params:set_action("time_clamp_max", function(x) time_clamp_max = x end)
+  params:set_action("time_clamp_min", function(x) 
+    params:set("time_clamp_max", util.clamp(params:get("time_clamp_max"), x, #ppqn_divisions))
+    time_clamp_min = x end)
+  params:set_action("time_clamp_max", function(x) 
+    params:set("time_clamp_min", util.clamp(params:get("time_clamp_min"), 1, x))
+    time_clamp_max = x end)
 
   params:add_group("~ r e f r a i n", 15)
   refrain.init()
   
-  params:add_group("Passersby", 31)
+  params:add_group("passersby", 31)
   passersby.add_params()
   wsyn_add_params()
   bang()
@@ -1018,11 +1041,11 @@ function grid_redraw()
     g:led(new_high-16,7,15)
   end
   
-  -- ADDED: redraw the led for clockdiv = 1/4
-  led_low_temp = 16 - (2 + 3 * (sel_ppqn_div-1)) --FIX better math
-  led_high_temp = 2 + 3 * (sel_ppqn_div - 1)
+  --grid for time div buttons
+  local led_low_temp = (15 + math.ceil(15/#ppqn_divisions)) - sel_ppqn_div*math.ceil(15/#ppqn_divisions) --i think this math works even when changing length of ppqn_divisions?
+  local led_high_temp = sel_ppqn_div*math.ceil(15/#ppqn_divisions)
   g:led(10, 8, led_low_temp)
-  g:led(11, 8, 8)
+  g:led(11, 8, 9)
   g:led(12, 8, led_high_temp)
   g:refresh()
 end
