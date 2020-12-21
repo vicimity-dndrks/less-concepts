@@ -42,10 +42,20 @@
 -- discover.
 
 local seed = 0
+local seed_clamp_min = 0
+local seed_clamp_max = 255
 local rule = 0
+rule_clamp_min = 0
+rule_clamp_max = 255
 local next_seed = nil
 local new_low = 1
+local lo_clamp_min = 1
+local lo_clamp_max = 32
 local new_high = 14
+local hi_clamp_min = 1
+local hi_clamp_max = 32
+local oct_clamp_min = -2
+local oct_clamp_max = 2
 local coll = 1
 local new_seed = seed
 local new_rule = rule
@@ -107,10 +117,14 @@ for i = 1,9 do
 end
 
 local ppqn = 96
-local sel_ppqn_div = 5
-local ppqn_divisions = {1/4  , 1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
-local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
+local sel_ppqn_div = 3
+--local ppqn_divisions = {1/4  , 1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
+--local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
+local ppqn_divisions = {2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
+local ppqn_names     = {'1/8', '1/16.', '1/16', '1/32.', '1/32'}
 ppqn_counter = 1
+local time_clamp_min = 1
+local time_clamp_min = #ppqn_divisions
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -356,7 +370,7 @@ end
 refrain = include "lib/refrain"
 
 function wsyn_add_params()
-  params:add_separator("W/Syn")
+  params:add_group("W/Syn",10)
   params:add {
     type = "option",
     id = "wsyn_ar_mode",
@@ -420,6 +434,21 @@ function wsyn_add_params()
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
     action = function(val) crow.send("ii.wsyn.lpg_symmetry(" .. val .. ")") end
   }
+  params:add{
+    type = "binary",
+    id = "wsyn_randomize",
+    name = "Randomize",
+    action = function()
+      params:set("wsyn_curve", math.random(-5, 5))
+      params:set("wsyn_ramp", math.random(-5, 5))
+      params:set("wsyn_fm_index", math.random(0, 5))
+      params:set("wsyn_fm_env", math.random(-5, 5))
+      params:set("wsyn_fm_ratio_num", math.random(1, 20))
+      params:set("wsyn_fm_ratio_den", math.random(1, 20))
+      params:set("wsyn_lpg_time", math.random(-5, 5))
+      params:set("wsyn_lpg_symmetry", math.random(-5, 5))
+    end
+  }
 end
 
 function pulse()
@@ -452,18 +481,19 @@ function init()
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   grid_dirty = true
+  params:add_group("load & save", 3)
   params:add_number("set", "set", 1,100,1)
   params:set_action("set", function (x) selected_set = x end)
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
-  params:add_separator()
   m = midi.connect()
 
+  params:add_group("midi & outputs", 3)
   params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
   params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
   params:set_action("midi ch vox 2", function (x) midi_vox_2(x) end)
-  params:add_separator()
+  
   params:add{type = "option", id = "output", name = "output",
     options = options.OUTPUT,
     action = function(value)
@@ -493,7 +523,7 @@ function init()
       end
     end}
 
-  params:add_separator()
+  params:add_group("scaling & randomization",21)
   params:add_option("scale", "scale", names, 1)
   params:set_action("scale", function(x) coll = x end)
   params:add_number("global transpose", "global transpose", -24,24,0)
@@ -508,9 +538,42 @@ function init()
     params:add_control("gate prob "..i, "gate prob "..i, controlspec.new(0,100,'lin',1,100,'%'))
     params:set_action("gate prob "..i, function(x) random_gate[i].probability = x end)
   end
+  params:add_separator("randomization limits")
+  params:add_number("seed_clamp_min", "seed min", 0, 255, 0)
+  params:set_action("seed_clamp_min", function(x) seed_clamp_min = x end)
+  params:add_number("seed_clamp_max", "seed max", params:get("seed_clamp_min"), 255, 255)
+  params:set_action("seed_clamp_max", function(x) seed_clamp_max = x end)
+  params:add_number("rule_clamp_min", "rule min", 0, 127, 0)
+  params:set_action("rule_clamp_min", function(x) rule_clamp_min = x end)
+  params:add_number("rule_clamp_max", "rule max", 128, 255, 255)
+  params:set_action("rule_clamp_max", function(x) rule_clamp_max = x end)
+  
+  params:add_number("lo_clamp_min", "low min", 1, 32, 1)
+  params:set_action("lo_clamp_min", function(x) lo_clamp_min = x end)
+  params:add_number("lo_clamp_max", "low max", 1, 32, 32)
+  params:set_action("lo_clamp_max", function(x) lo_clamp_max = x end)
+  params:add_number("hi_clamp_min", "high min", 1, 32, 1)
+  params:set_action("hi_clamp_min", function(x) hi_clamp_min = x end)
+  params:add_number("hi_clamp_max", "high max", 1, 32, 32)
+  params:set_action("hi_clamp_min", function(x) hi_clamp_min = x end)
+
+
+  params:add_number("oct_clamp_min", "octave min", -3, 3, -2)
+  params:set_action("oct_clamp_min", function(x) oct_clamp_min = x end)
+  params:add_number("oct_clamp_max", "octave max", -3, 3, 2)
+  params:set_action("oct_clamp_max", function(x) oct_clamp_max = x end)
+  
+  params:add_option("time_clamp_min", "time division min", ppqn_names, 1)
+  params:set_action("time_clamp_min", function(x) time_clamp_min = x end)
+  params:add_option("time_clamp_max", "time division min", ppqn_names, #ppqn_divisions)
+  params:set_action("time_clamp_max", function(x) time_clamp_max = x end)
+
+  params:add_group("~ r e f r a i n", 15)
   refrain.init()
-  wsyn_add_params()
+  
+  params:add_group("Passersby", 31)
   passersby.add_params()
+  wsyn_add_params()
   bang()
 
   notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,43,45,47,48,50,52,53},
@@ -532,6 +595,7 @@ function init()
             {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31} }
   
   --names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
+
 
   clock.run(pulse)
 
@@ -764,7 +828,7 @@ g.key = function(x,y,z)
       sel_ppqn_div = util.clamp(sel_ppqn_div - 1, 1, #ppqn_divisions) 
     end
     if y == 8 and x == 11 and z == 1 then
-      sel_ppqn_div = math.floor(#ppqn_divisions / 2)
+      sel_ppqn_div = math.floor((#ppqn_divisions + 1) / 2)
     end
     if y == 8 and x == 12 and z == 1then
       sel_ppqn_div = util.clamp(sel_ppqn_div + 1, 1, #ppqn_divisions)
@@ -829,10 +893,10 @@ g.key = function(x,y,z)
   end
   if y == 3 and z == 1 then
     if x == 1 then
-      seed = math.random(0,255)
+      seed = math.random(seed_clamp_min,seed_clamp_max)
       new_seed = seed
     elseif x == 2 then
-      rule = math.random(0,255)
+      rule = math.random(rule_clamp_min,rule_clamp_max)
       new_rule = rule
     elseif x == 4 then
       voice[1].bit = math.random(0,8)
@@ -840,25 +904,25 @@ g.key = function(x,y,z)
       voice[2].bit = math.random(0,8)
     elseif x == 7 or x == 8 or x == 10 or x == 11 then
       if x == 7 then
-        new_low = math.random(1,32)
+        new_low = math.random(lo_clamp_min,lo_clamp_max)
       end
       if x == 8 then
-        new_high = math.random(1,32)
+        new_high = math.random(hi_clamp_min,hi_clamp_max)
       end
       if x == 10 then
-        voice[1].octave = math.random(-2,2)
+        voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
       end
       if x == 11 then
-        voice[2].octave = math.random(-2,2)
+        voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
       end
     elseif x == 10 then
-      voice[1].octave = math.random(-2,2)
+      voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
     elseif x == 11 then
-      voice[2].octave = math.random(-2,2)
+      voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
     elseif x == 13 then
-      sel_ppqn_div = math.random(1, #ppqn_divisions)
+      sel_ppqn_div = math.random(time_clamp_min, time_clamp_max)
     elseif x == 14 then
-      sel_ppqn_div = math.random(1, #ppqn_divisions)
+      sel_ppqn_div = math.random(time_clamp_min, time_clamp_max)
       randomize_all()
     elseif x == 16 then
       randomize_all()
@@ -955,10 +1019,11 @@ function grid_redraw()
   end
   
   -- ADDED: redraw the led for clockdiv = 1/4
-  for i=10, 12 do
-    g:led(i, 8, 4)
-  end
-  g:led(8 + 3, 8, 6) --g:led(8 + new_sel_clockdiv, 8, 15)
+  led_low_temp = 16 - (2 + 3 * (sel_ppqn_div-1)) --FIX better math
+  led_high_temp = 2 + 3 * (sel_ppqn_div - 1)
+  g:led(10, 8, led_low_temp)
+  g:led(11, 8, 8)
+  g:led(12, 8, led_high_temp)
   g:refresh()
 end
 
@@ -967,45 +1032,45 @@ end
 -- randomize all maths paramaters (does not affect scale or engine, for ease of use)
 function randomize_all()
   grid_dirty = true
-  seed = math.random(0,255)
+  seed = math.random(seed_clamp_min,seed_clamp_max)
   new_seed = seed
-  rule = math.random(0,255)
+  rule = math.random(rule_clamp_min,rule_clamp_max)
   new_rule = rule
   voice[1].bit = math.random(0,8)
   voice[2].bit = math.random(0,8)
-  new_low = math.random(1,32)
-  new_high = math.random(1,32)
-  voice[1].octave = math.random(-2,2)
-  voice[2].octave = math.random(-2,2)
+  new_low = math.random(lo_clamp_min,lo_clamp_max)
+  new_high = math.random(hi_clamp_min,hi_clamp_max)
+  voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
+  voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
   bang()
   grid_dirty = true
 end
 
 function randomize_some()
   if edit == "seed/rule" then
-    seed = math.random(0,255)
+    seed = math.random(seed_clamp_min,seed_clamp_max)
     new_seed = seed
-    rule = math.random(0,255)
+    rule = math.random(rule_clamp_min,rule_clamp_max)
     new_rule = rule
   elseif edit == "lc_gate_probs" then
     for i = 1,2 do
       params:set("gate prob "..i, math.random(0,100))
     end
   elseif edit == "low/high" then
-    new_low = math.random(1,32)
-    new_high = math.random(1,32)
+    new_low = math.random(lo_clamp_min,lo_clamp_max)
+    new_high = math.random(hi_clamp_min,hi_clamp_max)
   elseif edit == "rand_prob" then
     for i = 1,2 do
       params:set("tran prob "..i, math.random(0,100))
     end
   elseif edit == "octaves" then
-    voice[1].octave = math.random(-2,2)
-    voice[2].octave = math.random(-2,2)
+    voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
+    voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
   elseif edit == "lc_bits" then
     voice[1].bit = math.random(0,8)
     voice[2].bit = math.random(0,8)
   elseif edit == "clock" then
-    sel_ppqn_div = math.random(1, #ppqn_divisions)
+    sel_ppqn_div = math.random(time_clamp_min, time_clamp_max)
   elseif edit == "presets" then
     randomize_all()
   end
@@ -1044,24 +1109,26 @@ function new_preset_unpack(set)
 end
 
 function preset_remove(set)
-  for i = set,8 do
-    new_preset_pool[i].seed = new_preset_pool[i+1].seed
-    new_preset_pool[i].rule = new_preset_pool[i+1].rule
-    new_preset_pool[i].v1_bit = new_preset_pool[i+1].v1_bit
-    new_preset_pool[i].v2_bit = new_preset_pool[i+1].v2_bit
-    new_preset_pool[i].new_low = new_preset_pool[i+1].new_low
-    new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
-    new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
-    new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
-    new_preset_pool[i].sel_ppqn_div = new_preset_pool[i+1].sel_ppqn_div
+  if set ~= 0 then
+    for i = set,8 do
+      new_preset_pool[i].seed = new_preset_pool[i+1].seed
+      new_preset_pool[i].rule = new_preset_pool[i+1].rule
+      new_preset_pool[i].v1_bit = new_preset_pool[i+1].v1_bit
+      new_preset_pool[i].v2_bit = new_preset_pool[i+1].v2_bit
+      new_preset_pool[i].new_low = new_preset_pool[i+1].new_low
+      new_preset_pool[i].new_high = new_preset_pool[i+1].new_high
+      new_preset_pool[i].v1_octave = new_preset_pool[i+1].v1_octave
+      new_preset_pool[i].v2_octave = new_preset_pool[i+1].v2_octave
+      new_preset_pool[i].sel_ppqn_div = new_preset_pool[i+1].sel_ppqn_div
+    end
+    if selected_preset > 1 and selected_preset < preset_count then
+      selected_preset = selected_preset
+    elseif selected_preset == preset_count then
+      selected_preset = selected_preset - 1
+    end
+    preset_count = preset_count - 1
+    redraw()
   end
-  if selected_preset > 1 and selected_preset < preset_count then
-    selected_preset = selected_preset
-  elseif selected_preset == preset_count then
-    selected_preset = selected_preset - 1
-  end
-  preset_count = preset_count - 1
-  redraw()
 end
 
 -- save snapshots as presets
@@ -1193,7 +1260,7 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
         params:set("tran prob 1", load_tran_prob_1)
         params:set("tran prob 2", load_tran_prob_2)
       end
-      sel_ppqn_div = 9 --set default clock div to 1/16 for old saves
+      sel_ppqn_div = 3 --set default clock div to 1/16 for old saves
     else
       print("invalid data file")
     end

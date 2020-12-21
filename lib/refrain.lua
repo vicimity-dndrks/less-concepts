@@ -20,7 +20,6 @@ function refrain.init()
   refrain.edit = "ref_feedback"
   refrain.dd = 0
   
-  params:add_separator()
   params:add_control("engine_input", "engine -> ~ r e f r a i n", controlspec.new(0, 3, "lin", 0, 0, ""))
   params:set_action("engine_input", function(x) audio.level_eng_cut(x) end)
   params:add_option("note -> param", "note -> param", refrain.scaled, 1)
@@ -84,8 +83,6 @@ function refrain.init()
     params:add_control(i .. "volume", i .. " volume", controlspec.new(0,3,"lin",0,1,""))
     params:set_action(i .. "volume", function(x) softcut.level(i,x)end)
   end
-  
-  params:add_separator()
   
   track[1].pan = -0.7
   track[2].pan = 0.7
