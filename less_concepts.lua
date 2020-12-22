@@ -118,7 +118,7 @@ local ppqn_divisions_variants = {
 local ppqn_names_variants = {
   {'1/8', '1/8t', '1/16', '1/16t', '1/32'},
   {'1/1', '1/1t', '1/2', '1/2t', '1/4'},
-  {'2/1', '2t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16', '1/16t', '1/32'}
+  {'2/1', '2/1t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16', '1/16t', '1/32'}
 }
 local ppqn_divisions = ppqn_divisions_variants[1]
 local ppqn_names     = ppqn_names_variants[1]
