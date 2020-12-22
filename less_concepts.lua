@@ -111,12 +111,12 @@ local ppqn = 96
 -- thank you @Zifor
 local ppqn_divisions_variants = {
   {2/1, 3/1, 4/1, 6/1, 8/1},
-  {1/4, 1/3, 1/2, 1/1.5, 1/1},
+  {1/4, 1/3, 1/2, 1/1.5, 1/1, 1.5/1, 2/1, 3/1, 4/1},
   {1/8, 1/6, 1/4, 1/3, 1/2, 1/1.5, 1/1, 1.5/1, 2/1,  3/1, 4/1, 6/1, 8/1}
 }
 local ppqn_names_variants = {
   {'1/8', '1/8t', '1/16', '1/16t', '1/32'}, --centroid 1/16
-  {'2/1', '2/1t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8'}, --centroid 1/2
+  {'1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16'}, --centroid 1/2
   {'2/1', '2/1t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16', '1/16t', '1/32'} --centroid 1/4
 }
 local ppqn_divisions = ppqn_divisions_variants[1]
@@ -493,12 +493,6 @@ function init()
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
   params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
   params:set_action("midi ch vox 2", function (x) midi_vox_2(x) end)
-  params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow mode 1/1 - 1/4", "full range 2/1 - 1/32"}, 1)
-  params:set_action("time_div_opt", function(x)
-    ppqn_divisions = ppqn_divisions_variants[x]
-    ppqn_names = ppqn_names_variants[x]
-    sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
-  end)
   
   params:add{type = "option", id = "output", name = "output",
     options = options.OUTPUT,
@@ -528,8 +522,14 @@ function init()
         params:set("wsyn_ar_mode", 2) --set ar mode to on when w/syn is selected
       end
     end}
+  params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
+  params:set_action("time_div_opt", function(x)
+    ppqn_divisions = ppqn_divisions_variants[x]
+    ppqn_names = ppqn_names_variants[x]
+    sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+  end)
 
-  params:add_group("scaling & randomization",21)
+  params:add_group("scaling & randomization",19)
   params:add_option("scale", "scale", names, 1)
   params:set_action("scale", function(x) coll = x end)
   params:add_number("global transpose", "global transpose", -24,24,0)
@@ -588,7 +588,7 @@ function init()
     params:set("oct_clamp_min", util.clamp(params:get("oct_clamp_min"), -3, x))
   end)
   
-  params:add_option("time_clamp_min", "time division min", ppqn_names, 1)
+  --[[params:add_option("time_clamp_min", "time division min", ppqn_names, 1)
   params:add_option("time_clamp_max", "time division min", ppqn_names, #ppqn_divisions)
   params:set_action("time_clamp_min", function(x) 
     params:set("time_clamp_max", util.clamp(params:get("time_clamp_max"), x, #ppqn_divisions)) 
@@ -596,6 +596,7 @@ function init()
   params:set_action("time_clamp_max", function(x) 
     params:set("time_clamp_min", util.clamp(params:get("time_clamp_min"), 1, x)) 
   end)
+  ]]
 
   params:add_group("~ r e f r a i n", 15)
   refrain.init()
