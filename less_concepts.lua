@@ -1194,14 +1194,26 @@ function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
     io.write(params:get("transpose "..i) .. "\n")
     io.write(params:get("tran prob "..i) .. "\n")
   end
-  io.write("LCv2.2")
+  io.write("LCv2.2\n")
   for i = 1,preset_count do
     io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
   end
+  io.write(params:get("output") .. "\n")
+  io.write(params:get("time_div_opt") .. "\n")
+  io.write(params:get("seed_clamp_min") .. "\n")
+  io.write(params:get("seed_clamp_max") .. "\n")
+  io.write(params:get("rule_clamp_min") .. "\n")
+  io.write(params:get("rule_clamp_max") .. "\n")
+  io.write(params:get("lo_clamp_min") .. "\n")
+  io.write(params:get("lo_clamp_max") .. "\n")
+  io.write(params:get("hi_clamp_max") .. "\n")
+  io.write(params:get("oct_clamp_min") .. "\n")
+  io.write(params:get("oct_clamp_max") .. "\n")
   io.close(file)
 end
 
 function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
+  --selected_preset = 0
   local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "r")
   if file then
     io.input(file)
@@ -1210,6 +1222,8 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
       preset_count = tonumber(io.read())
       if preset_count > 0 then
         selected_preset = 1
+      else
+        selected_preset = 0
       end
       for i = 1,preset_count do
         new_preset_pool[i].seed = tonumber(io.read())
@@ -1253,11 +1267,28 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
       end
       extended_file = io.read()
       if extended_file == "LCv2.2" then
+        if preset_count > 0 then
+          selected_preset = 1
+        end
         for i = 1,preset_count do
           new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
         end
+        output = tonumber(io.read())
+        params:set("time_div_opt", tonumber(io.read()))
+        params:set("seed_clamp_min", tonumber(io.read()))
+        params:set("seed_clamp_max", tonumber(io.read()))
+        params:set("rule_clamp_min", tonumber(io.read()))
+        params:set("rule_clamp_max", tonumber(io.read()))
+        params:set("lo_clamp_min", tonumber(io.read()))
+        params:set("lo_clamp_max", tonumber(io.read()))
+        params:set("hi_clamp_min", tonumber(io.read()))
+        params:set("hi_clamp_max", tonumber(io.read()))
+        params:set("oct_clamp_min", tonumber(io.read()))
+        params:set("oct_clamp_max", tonumber(io.read()))
       else
-        sel_ppqn_div = util.round((1+#ppqn_divisions)/2) --set default clock div to centroid for old saves
+        for i = 1,preset_count do
+          new_preset_pool[i].sel_ppqn_div = util.round((1+#ppqn_divisions)/2) --set default clock div to centroid for old saves
+        end
       end
     else
       print("invalid data file")
