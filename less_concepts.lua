@@ -42,20 +42,10 @@
 -- discover.
 
 local seed = 0
-local seed_clamp_min = 0
-local seed_clamp_max = 255
 local rule = 0
-rule_clamp_min = 0
-rule_clamp_max = 255
 local next_seed = nil
 local new_low = 1
-local lo_clamp_min = 1
-local lo_clamp_max = 32
 local new_high = 14
-local hi_clamp_min = 1
-local hi_clamp_max = 32
-local oct_clamp_min = -2
-local oct_clamp_max = 2
 local coll = 1
 local new_seed = seed
 local new_rule = rule
@@ -119,13 +109,20 @@ end
 local ppqn = 96
 local sel_ppqn_div = 3
 -- please keep ppqn_divisions and ppqn_names same length and odd numbered lengths
-local ppqn_divisions = {1/4  ,  1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
-local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
---local ppqn_divisions = {2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
---local ppqn_names     = {'1/8', '1/16.', '1/16', '1/32.', '1/32'}
-ppqn_counter = 1
-local time_clamp_min = 1
-local time_clamp_min = #ppqn_divisions
+-- thank you @Zifor
+local ppqn_divisions_variants = {
+  {2/1, 3/1, 4/1, 6/1, 8/1},
+  {1/4, 1/3, 1/2, 1/1.5, 1/1},
+  {1/8, 1/6, 1/4, 1/3, 1/2, 1/1.5, 1/1, 1.5/1, 2/1,  3/1, 4/1, 6/1, 8/1}
+}
+local ppqn_names_variants = {
+  {'1/8', '1/8t', '1/16', '1/16t', '1/32'},
+  {'1/1', '1/1t', '1/2', '1/2t', '1/4'},
+  {'2/1', '2t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16', '1/16t', '1/32'}
+}
+local ppqn_divisions = ppqn_divisions_variants[1]
+local ppqn_names     = ppqn_names_variants[1]
+ppqn_counter = 0
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -489,11 +486,17 @@ function init()
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   m = midi.connect()
 
-  params:add_group("midi & outputs", 3)
+  params:add_group("midi, outputs & timing", 4)
   params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
   params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
   params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
   params:set_action("midi ch vox 2", function (x) midi_vox_2(x) end)
+  params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow mode 1/1 - 1/4", "full range 2/1 - 1/32"}, 1)
+  params:set_action("time_div_opt", function(x)
+    ppqn_divisions = ppqn_divisions_variants[x]
+    ppqn_names = ppqn_names_variants[x]
+    sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+  end)
   
   params:add{type = "option", id = "output", name = "output",
     options = options.OUTPUT,
@@ -546,16 +549,16 @@ function init()
   params:add_number("rule_clamp_max", "rule max", 0, 255, 255)
   params:set_action("seed_clamp_min", function(x) 
     params:set("seed_clamp_max", util.clamp(params:get("seed_clamp_max"), x, 255))
-    seed_clamp_min = x end)
+  end)
   params:set_action("seed_clamp_max", function(x) 
     params:set("seed_clamp_min", util.clamp(params:get("seed_clamp_min"), 0, x))
-    seed_clamp_max = x end)
+  end)
   params:set_action("rule_clamp_min", function(x) 
     params:set("rule_clamp_max", util.clamp(params:get("rule_clamp_max"), x, 255))
-    rule_clamp_min = x end)
+  end)
   params:set_action("rule_clamp_max", function(x) 
     params:set("rule_clamp_min", util.clamp(params:get("rule_clamp_min"), 0, x))
-    rule_clamp_max = x end)
+  end)
   
   params:add_number("lo_clamp_min", "low min", 1, 32, 1)
   params:add_number("lo_clamp_max", "low max", 1, 32, 32)
@@ -563,34 +566,34 @@ function init()
   params:add_number("hi_clamp_max", "high max", 1, 32, 32)
   params:set_action("lo_clamp_min", function(x) 
     params:set("lo_clamp_max", util.clamp(params:get("lo_clamp_max"), x, 32))
-    lo_clamp_min = x end)
+  end)
   params:set_action("lo_clamp_max", function(x) 
     params:set("lo_clamp_min", util.clamp(params:get("lo_clamp_min"), 1, x))
-    lo_clamp_max = x end)
+  end)
   params:set_action("hi_clamp_min", function(x) 
     params:set("hi_clamp_max", util.clamp(params:get("hi_clamp_max"), x, 32))
-    hi_clamp_min = x end)
+  end)
   params:set_action("hi_clamp_max", function(x) 
     params:set("hi_clamp_min", util.clamp(params:get("hi_clamp_min"), 1, x))
-    hi_clamp_min = x end)
+  end)
 
   params:add_number("oct_clamp_min", "octave min", -3, 3, -2)
   params:add_number("oct_clamp_max", "octave max", -3, 3, 2)
   params:set_action("oct_clamp_min", function(x) 
     params:set("oct_clamp_max", util.clamp(params:get("oct_clamp_max"), x, 3))
-    oct_clamp_min = x end)
+  end)
   params:set_action("oct_clamp_max", function(x) 
     params:set("oct_clamp_min", util.clamp(params:get("oct_clamp_min"), -3, x))
-    oct_clamp_max = x end)
+  end)
   
   params:add_option("time_clamp_min", "time division min", ppqn_names, 1)
   params:add_option("time_clamp_max", "time division min", ppqn_names, #ppqn_divisions)
   params:set_action("time_clamp_min", function(x) 
-    params:set("time_clamp_max", util.clamp(params:get("time_clamp_max"), x, #ppqn_divisions))
-    time_clamp_min = x end)
+    params:set("time_clamp_max", util.clamp(params:get("time_clamp_max"), x, #ppqn_divisions)) 
+  end)
   params:set_action("time_clamp_max", function(x) 
-    params:set("time_clamp_min", util.clamp(params:get("time_clamp_min"), 1, x))
-    time_clamp_max = x end)
+    params:set("time_clamp_min", util.clamp(params:get("time_clamp_min"), 1, x)) 
+  end)
 
   params:add_group("~ r e f r a i n", 15)
   refrain.init()
@@ -917,10 +920,10 @@ g.key = function(x,y,z)
   end
   if y == 3 and z == 1 then
     if x == 1 then
-      seed = math.random(seed_clamp_min,seed_clamp_max)
+      seed = math.random(params:get("seed_clamp_min"),params:get("seed_clamp_max"))
       new_seed = seed
     elseif x == 2 then
-      rule = math.random(rule_clamp_min,rule_clamp_max)
+      rule = math.random(params:get("rule_clamp_min"),params:get("rule_clamp_max"))
       new_rule = rule
     elseif x == 4 then
       voice[1].bit = math.random(0,8)
@@ -928,25 +931,25 @@ g.key = function(x,y,z)
       voice[2].bit = math.random(0,8)
     elseif x == 7 or x == 8 or x == 10 or x == 11 then
       if x == 7 then
-        new_low = math.random(lo_clamp_min,lo_clamp_max)
+        new_low = math.random(params:get("lo_clamp_min"),params:get("lo_clamp_max"))
       end
       if x == 8 then
-        new_high = math.random(hi_clamp_min,hi_clamp_max)
+        new_high = math.random(params:get("hi_clamp_min"),params:get("hi_clamp_max"))
       end
       if x == 10 then
-        voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
+        voice[1].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
       end
       if x == 11 then
-        voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
+        voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
       end
     elseif x == 10 then
-      voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
+      voice[1].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
     elseif x == 11 then
-      voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
+      voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
     elseif x == 13 then
-      sel_ppqn_div = math.random(time_clamp_min, time_clamp_max)
+      sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
     elseif x == 14 then
-      sel_ppqn_div = math.random(time_clamp_min, time_clamp_max)
+      sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
       randomize_all()
     elseif x == 16 then
       randomize_all()
@@ -1043,12 +1046,12 @@ function grid_redraw()
   end
   
   --grid for time div buttons
-  
+  --thank you @Quixotic7
   --local led_low_temp = util.round((1 - (15*sel_ppqn_div / #ppqn_divisions)) * 15)
-  local off_temp = util.round(15 / #ppqn_divisions)
-  local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
+  local off_temp = util.round(15 / #ppqn_divisions) --creates offset for led_low_temp
+  local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
   local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
-  print(util.round((1-(sel_ppqn_div/#ppqn_divisions))*15), #ppqn_divisions, led_low_temp, led_high_temp)
+  --print(util.round((1-(sel_ppqn_div/#ppqn_divisions))*15), #ppqn_divisions, led_low_temp, led_high_temp)
   g:led(10, 8, led_low_temp)
   g:led(11, 8, 8)
   g:led(12, 8, led_high_temp)
@@ -1060,16 +1063,16 @@ end
 -- randomize all maths paramaters (does not affect scale or engine, for ease of use)
 function randomize_all()
   grid_dirty = true
-  seed = math.random(seed_clamp_min,seed_clamp_max)
+  seed = math.random(params:get("seed_clamp_min"),params:get("seed_clamp_max"))
   new_seed = seed
-  rule = math.random(rule_clamp_min,rule_clamp_max)
+  rule = math.random(params:get("rule_clamp_min"),params:get("rule_clamp_max"))
   new_rule = rule
   voice[1].bit = math.random(0,8)
   voice[2].bit = math.random(0,8)
-  new_low = math.random(lo_clamp_min,lo_clamp_max)
-  new_high = math.random(hi_clamp_min,hi_clamp_max)
-  voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
-  voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
+  new_low = math.random(params:get("lo_clamp_min"),params:get("lo_clamp_max"))
+  new_high = math.random(params:get("hi_clamp_min"),params:get("hi_clamp_max"))
+  voice[1].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
+  voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
   bang()
   grid_dirty = true
 end
@@ -1092,13 +1095,13 @@ function randomize_some()
       params:set("tran prob "..i, math.random(0,100))
     end
   elseif edit == "octaves" then
-    voice[1].octave = math.random(oct_clamp_min,oct_clamp_max)
-    voice[2].octave = math.random(oct_clamp_min,oct_clamp_max)
+    voice[1].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
+    voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
   elseif edit == "lc_bits" then
     voice[1].bit = math.random(0,8)
     voice[2].bit = math.random(0,8)
   elseif edit == "clock" then
-    sel_ppqn_div = math.random(time_clamp_min, time_clamp_max)
+    sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
   elseif edit == "presets" then
     randomize_all()
   end
