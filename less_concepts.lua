@@ -118,10 +118,11 @@ end
 
 local ppqn = 96
 local sel_ppqn_div = 3
---local ppqn_divisions = {1/4  , 1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
---local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
-local ppqn_divisions = {2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
-local ppqn_names     = {'1/8', '1/16.', '1/16', '1/32.', '1/32'}
+-- please keep ppqn_divisions and ppqn_names same length and odd numbered lengths
+local ppqn_divisions = {1/4  ,  1/3   , 1/2  , 1/1.5 , 1/1  , 1.5/1 , 2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
+local ppqn_names     = {'1/1', '1/2T', '1/2', '1/4T', '1/4', '1/8T', '1/8', '1/16T', '1/16', '1/32T', '1/32'}
+--local ppqn_divisions = {2/1  ,  3/1   , 4/1   , 6/1    , 8/1}
+--local ppqn_names     = {'1/8', '1/16.', '1/16', '1/32.', '1/32'}
 ppqn_counter = 1
 local time_clamp_min = 1
 local time_clamp_min = #ppqn_divisions
@@ -461,7 +462,7 @@ end
 
 -- everything that happens when the script is first loaded
 function init()
-  -- for testing purposes (REMOVE WHEN DONE)
+  -- sets initial state
   voice[1].bit = 1
   voice[2].bit = 8
   seed = 36
@@ -1042,10 +1043,14 @@ function grid_redraw()
   end
   
   --grid for time div buttons
-  local led_low_temp = (15 + math.ceil(15/#ppqn_divisions)) - sel_ppqn_div*math.ceil(15/#ppqn_divisions) --i think this math works even when changing length of ppqn_divisions?
-  local led_high_temp = sel_ppqn_div*math.ceil(15/#ppqn_divisions)
+  
+  --local led_low_temp = util.round((1 - (15*sel_ppqn_div / #ppqn_divisions)) * 15)
+  local off_temp = util.round(15 / #ppqn_divisions)
+  local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
+  local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
+  print(util.round((1-(sel_ppqn_div/#ppqn_divisions))*15), #ppqn_divisions, led_low_temp, led_high_temp)
   g:led(10, 8, led_low_temp)
-  g:led(11, 8, 9)
+  g:led(11, 8, 8)
   g:led(12, 8, led_high_temp)
   g:refresh()
 end
