@@ -105,9 +105,8 @@ for i = 1,9 do
   new_preset_pool[i].v2_octave = {}
   new_preset_pool[i].sel_ppqn_div = {}
 end
-
+local crow_gate_length = clock.get_beat_sec() / 2000
 local ppqn = 96
-local sel_ppqn_div = 3
 -- please keep ppqn_divisions and ppqn_names same length and odd numbered lengths
 -- thank you @Zifor
 local ppqn_divisions_variants = {
@@ -116,13 +115,15 @@ local ppqn_divisions_variants = {
   {1/8, 1/6, 1/4, 1/3, 1/2, 1/1.5, 1/1, 1.5/1, 2/1,  3/1, 4/1, 6/1, 8/1}
 }
 local ppqn_names_variants = {
-  {'1/8', '1/8t', '1/16', '1/16t', '1/32'},
-  {'1/1', '1/1t', '1/2', '1/2t', '1/4'},
-  {'2/1', '2/1t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16', '1/16t', '1/32'}
+  {'1/8', '1/8t', '1/16', '1/16t', '1/32'}, --centroid 1/16
+  {'2/1', '2/1t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8'}, --centroid 1/2
+  {'2/1', '2/1t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16', '1/16t', '1/32'} --centroid 1/4
 }
 local ppqn_divisions = ppqn_divisions_variants[1]
 local ppqn_names     = ppqn_names_variants[1]
 ppqn_counter = 0
+local sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -253,6 +254,7 @@ end
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
 
 local function iterate()
+  crow_gate_length = clock.get_beat_sec() / 2000
   if ppqn_counter >= ppqn / ppqn_divisions[sel_ppqn_div] then
     ppqn_counter = 0
     for i = 1,2 do notes_off(i) end
@@ -505,21 +507,21 @@ function init()
         crow.ii.jf.mode(0)
       elseif value == 2 then
         crow.ii.jf.mode(0)
-        crow.output[2].action = "{to(5,0),to(0,0.05)}"
+        crow.output[2].action = "{to(5,0),to(0,".. crow_gate_length .. ")}"
       elseif value == 3 then
         crow.ii.jf.mode(0)
-        crow.output[2].action = "{to(5,0),to(0,0.05)}"
-        crow.output[4].action = "{to(5,0),to(0,0.05)}"
+        crow.output[2].action = "{to(5,0),to(0,".. crow_gate_length .. ")}"
+        crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}"
       elseif value == 4 then
         crow.ii.jf.mode(1)
       elseif value == 5 then
         crow.ii.jf.mode(1)
-        crow.output[2].action = "{to(5,0),to(0,0.05)}"
-        crow.output[4].action = "{to(5,0),to(0,0.05)}"
+        crow.output[2].action = "{to(5,0),to(0,".. crow_gate_length .. ")}"
+        crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}"
       elseif value == 6 then
         crow.ii.jf.mode(1)
-        crow.output[2].action = "{to(5,0),to(0,0.05)}"
-        crow.output[4].action = "{to(5,0),to(0,0.05)}"
+        crow.output[2].action = "{to(5,0),to(0,".. crow_gate_length .. ")}"
+        crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}"
       elseif value == 7 then
         crow.ii.jf.mode(0)
         crow.send("ii.wsyn.ar_mode(" .. 1 .. ")")
@@ -1169,7 +1171,7 @@ end
 function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
   local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "w+")
   io.output(file)
-  io.write("new_permanence".."\n")
+  io.write("permanence".."\n")
   io.write(preset_count.."\n")
   for i = 1,preset_count do
     io.write(new_preset_pool[i].seed .. "\n")
@@ -1180,7 +1182,6 @@ function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
     io.write(new_preset_pool[i].new_high .. "\n")
     io.write(new_preset_pool[i].v1_octave .. "\n")
     io.write(new_preset_pool[i].v2_octave .. "\n")
-    io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
   end
   io.write(params:get("clock_tempo") .. "\n")
   io.write(params:get("clock_midi_out") .. "\n")
@@ -1192,6 +1193,10 @@ function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
     io.write(params:get("transpose "..i) .. "\n")
     io.write(params:get("tran prob "..i) .. "\n")
   end
+  io.write("LCv2.2")
+  for i = 1,preset_count do
+    io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
+  end
   io.close(file)
 end
 
@@ -1200,53 +1205,7 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
   if file then
     io.input(file)
     filetype = io.read()
-    if filetype == "new_permanence" then
-      preset_count = tonumber(io.read())
-      if preset_count > 0 then
-        selected_preset = 1
-      end
-      for i = 1,preset_count do
-        new_preset_pool[i].seed = tonumber(io.read())
-        new_preset_pool[i].rule = tonumber(io.read())
-        new_preset_pool[i].v1_bit = tonumber(io.read())
-        new_preset_pool[i].v2_bit = tonumber(io.read())
-        new_preset_pool[i].new_low = tonumber(io.read())
-        new_preset_pool[i].new_high = tonumber(io.read())
-        new_preset_pool[i].v1_octave = tonumber(io.read())
-        new_preset_pool[i].v2_octave = tonumber(io.read())
-        new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
-      end
-      load_bpm = tonumber(io.read())
-      load_clock = tonumber(io.read())
-      load_ch_1 = tonumber(io.read())
-      load_ch_2 = tonumber(io.read())
-      load_scale = tonumber(io.read())
-      load_global_trans = tonumber(io.read())
-      load_tran_1 = tonumber(io.read())
-      load_tran_prob_1 = tonumber(io.read())
-      load_tran_2 = tonumber(io.read())
-      load_tran_prob_2 = tonumber(io.read())
-      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and
-      load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
-        params:set("clock_tempo", 110)
-        params:set("clock_midi_out", 1)
-        params:set("midi ch vox 1", 1)
-        params:set("midi ch vox 2", 1)
-        params:set("scale", 1)
-        params:set("global transpose", 0)
-      else
-        params:set("clock_tempo", load_bpm)
-        params:set("clock_midi_out", load_clock)
-        params:set("midi ch vox 1", load_ch_1)
-        params:set("midi ch vox 2", load_ch_2)
-        params:set("scale", load_scale)
-        params:set("global transpose", load_global_trans)
-        params:set("transpose 1", load_tran_1)
-        params:set("transpose 2", load_tran_2)
-        params:set("tran prob 1", load_tran_prob_1)
-        params:set("tran prob 2", load_tran_prob_2)
-      end
-  elseif filetype == "permanence" then
+    if filetype == "permanence" then
       preset_count = tonumber(io.read())
       if preset_count > 0 then
         selected_preset = 1
@@ -1291,7 +1250,14 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
         params:set("tran prob 1", load_tran_prob_1)
         params:set("tran prob 2", load_tran_prob_2)
       end
-      sel_ppqn_div = 3 --set default clock div to 1/16 for old saves
+      extended_file = io.read()
+      if extended_file == "LCv2.2" then
+        for i = 1,preset_count do
+          new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
+        end
+      else
+        sel_ppqn_div = util.round((1+#ppqn_divisions)/2) --set default clock div to centroid for old saves
+      end
     else
       print("invalid data file")
     end
