@@ -116,7 +116,7 @@ local ppqn_divisions_variants = {
 }
 local ppqn_names_variants = {
   {'1/8', '1/8t', '1/16', '1/16t', '1/32'}, --centroid 1/16
-  {'1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16'}, --centroid 1/2
+  {'1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16'}, --centroid 1/4
   {'2/1', '2/1t', '1/1', '1/1t', '1/2', '1/2t', '1/4', '1/4t', '1/8', '1/8t', '1/16', '1/16t', '1/32'} --centroid 1/4
 }
 local ppqn_divisions = ppqn_divisions_variants[1]
