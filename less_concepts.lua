@@ -959,9 +959,9 @@ g.key = function(x,y,z)
     elseif x == 11 then
       voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
     elseif x == 13 then
-      sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
+      sel_ppqn_div = math.random(1, #ppqn_divisions)
     elseif x == 14 then
-      sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
+      sel_ppqn_div = math.random(1, #ppqn_divisions)
       randomize_all()
     elseif x == 16 then
       randomize_all()
@@ -1231,6 +1231,7 @@ function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
   io.write(params:get("hi_clamp_max") .. "\n")
   io.write(params:get("oct_clamp_min") .. "\n")
   io.write(params:get("oct_clamp_max") .. "\n")
+  io.write(params:get("output") .. "\n")
   io.close(file)
 end
 
@@ -1318,6 +1319,7 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
         params:set("hi_clamp_max", tonumber(io.read()))
         params:set("oct_clamp_min", tonumber(io.read()))
         params:set("oct_clamp_max", tonumber(io.read()))
+        params:set("output", tonumber(io.read()))
       else
         --tlc for pre 2.2 saves
         sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
