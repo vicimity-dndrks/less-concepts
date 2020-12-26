@@ -550,16 +550,24 @@ function init()
   params:add_number("rule_clamp_min", "rule min", 0, 255, 0)
   params:add_number("rule_clamp_max", "rule max", 0, 255, 255)
   params:set_action("seed_clamp_min", function(x) 
-    params:set("seed_clamp_max", util.clamp(params:get("seed_clamp_max"), x, 255))
+    if x >= params:get("seed_clamp_max") then
+      params:set("seed_clamp_min", params:get("seed_clamp_max") - 1)
+    end
   end)
   params:set_action("seed_clamp_max", function(x) 
-    params:set("seed_clamp_min", util.clamp(params:get("seed_clamp_min"), 0, x))
+    if x <= params:get("seed_clamp_min") then
+      params:set("seed_clamp_max", params:get("seed_clamp_min") + 1)
+    end
   end)
   params:set_action("rule_clamp_min", function(x) 
-    params:set("rule_clamp_max", util.clamp(params:get("rule_clamp_max"), x, 255))
+    if x >= params:get("rule_clamp_max") then
+      params:set("rule_clamp_min", params:get("rule_clamp_max") - 1)
+    end
   end)
   params:set_action("rule_clamp_max", function(x) 
-    params:set("rule_clamp_min", util.clamp(params:get("rule_clamp_min"), 0, x))
+    if x <= params:get("rule_clamp_min") then
+      params:set("rule_clamp_max", params:get("rule_clamp_min") + 1)
+    end
   end)
   
   params:add_number("lo_clamp_min", "low min", 1, 32, 1)
@@ -567,36 +575,38 @@ function init()
   params:add_number("hi_clamp_min", "high min", 1, 32, 1)
   params:add_number("hi_clamp_max", "high max", 1, 32, 32)
   params:set_action("lo_clamp_min", function(x) 
-    params:set("lo_clamp_max", util.clamp(params:get("lo_clamp_max"), x, 32))
+    if x >= params:get("lo_clamp_max") then
+      params:set("lo_clamp_min", params:get("lo_clamp_max") - 1)
+    end
   end)
   params:set_action("lo_clamp_max", function(x) 
-    params:set("lo_clamp_min", util.clamp(params:get("lo_clamp_min"), 1, x))
+    if x <= params:get("lo_clamp_min") then
+      params:set("lo_clamp_max", params:get("lo_clamp_min") + 1)
+    end
   end)
   params:set_action("hi_clamp_min", function(x) 
-    params:set("hi_clamp_max", util.clamp(params:get("hi_clamp_max"), x, 32))
+    if x >= params:get("hi_clamp_max") then
+      params:set("hi_clamp_min", params:get("hi_clamp_max") - 1)
+    end  
   end)
   params:set_action("hi_clamp_max", function(x) 
-    params:set("hi_clamp_min", util.clamp(params:get("hi_clamp_min"), 1, x))
+    if x <= params:get("hi_clamp_min") then
+      params:set("hi_clamp_max", params:get("hi_clamp_min") + 1)
+    end  
   end)
 
   params:add_number("oct_clamp_min", "octave min", -3, 3, -2)
   params:add_number("oct_clamp_max", "octave max", -3, 3, 2)
   params:set_action("oct_clamp_min", function(x) 
-    params:set("oct_clamp_max", util.clamp(params:get("oct_clamp_max"), x, 3))
+    if x >= params:get("oct_clamp_max") then
+      params:set("oct_clamp_min", params:get("oct_clamp_max") - 1)
+    end  
   end)
   params:set_action("oct_clamp_max", function(x) 
-    params:set("oct_clamp_min", util.clamp(params:get("oct_clamp_min"), -3, x))
+    if x <= params:get("oct_clamp_min") then
+      params:set("oct_clamp_max", params:get("oct_clamp_min") + 1)
+    end  
   end)
-  
-  --[[params:add_option("time_clamp_min", "time division min", ppqn_names, 1)
-  params:add_option("time_clamp_max", "time division min", ppqn_names, #ppqn_divisions)
-  params:set_action("time_clamp_min", function(x) 
-    params:set("time_clamp_max", util.clamp(params:get("time_clamp_max"), x, #ppqn_divisions)) 
-  end)
-  params:set_action("time_clamp_max", function(x) 
-    params:set("time_clamp_min", util.clamp(params:get("time_clamp_min"), 1, x)) 
-  end)
-  ]]
 
   params:add_group("~ r e f r a i n", 15)
   refrain.init()
@@ -625,7 +635,6 @@ function init()
             {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31} }
   
   --names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
-
 
   clock.run(pulse)
 
@@ -1082,17 +1091,17 @@ end
 
 function randomize_some()
   if edit == "seed/rule" then
-    seed = math.random(seed_clamp_min,seed_clamp_max)
+    seed = math.random(params:get("seed_clamp_min"),params:get("seed_clamp_max"))
     new_seed = seed
-    rule = math.random(rule_clamp_min,rule_clamp_max)
+    rule = math.random(params:get("rule_clamp_min"),params:get("rule_clamp_max"))
     new_rule = rule
   elseif edit == "lc_gate_probs" then
     for i = 1,2 do
       params:set("gate prob "..i, math.random(0,100))
     end
   elseif edit == "low/high" then
-    new_low = math.random(lo_clamp_min,lo_clamp_max)
-    new_high = math.random(hi_clamp_min,hi_clamp_max)
+    new_low = math.random(params:get("lo_clamp_min"),params:get("lo_clamp_max"))
+    new_high = math.random(params:get("hi_clamp_min"),params:get("hi_clamp_max"))
   elseif edit == "rand_prob" then
     for i = 1,2 do
       params:set("tran prob "..i, math.random(0,100))
@@ -1104,7 +1113,7 @@ function randomize_some()
     voice[1].bit = math.random(0,8)
     voice[2].bit = math.random(0,8)
   elseif edit == "clock" then
-    sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
+    sel_ppqn_div = math.random(1, #ppqn_divisions)
   elseif edit == "presets" then
     randomize_all()
   end
@@ -1195,8 +1204,20 @@ function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
     io.write(params:get("tran prob "..i) .. "\n")
   end
   io.write("LCv2.2\n")
-  for i = 1,preset_count do
-    io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
+  if preset_count == 0 then
+    io.write(seed .. "\n")
+    io.write(rule .. "\n")
+    for i = 1, 2 do
+      io.write(voice[i].bit .. "\n")
+      io.write(voice[i].octave .. "\n")
+    end
+    io.write(new_low .. "\n")
+    io.write(new_high .. "\n")
+    io.write(sel_ppqn_div .. "\n")
+  else
+    for i = 1,preset_count do
+      io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
+    end
   end
   io.write(params:get("output") .. "\n")
   io.write(params:get("time_div_opt") .. "\n")
@@ -1206,6 +1227,7 @@ function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
   io.write(params:get("rule_clamp_max") .. "\n")
   io.write(params:get("lo_clamp_min") .. "\n")
   io.write(params:get("lo_clamp_max") .. "\n")
+  io.write(params:get("hi_clamp_min") .. "\n")
   io.write(params:get("hi_clamp_max") .. "\n")
   io.write(params:get("oct_clamp_min") .. "\n")
   io.write(params:get("oct_clamp_max") .. "\n")
@@ -1267,11 +1289,22 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
       end
       extended_file = io.read()
       if extended_file == "LCv2.2" then
-        if preset_count > 0 then
+        if preset_count == 0 then
+          new_seed = tonumber(io.read())
+          new_rule = tonumber(io.read())
+          for i = 1, 2 do
+            voice[i].bit = tonumber(io.read())
+            voice[i].oct = tonumber(io.read())
+          end
+          new_low = tonumber(io.read())
+          new_high = tonumber(io.read())
+          sel_ppqn_div = tonumber(io.read())
+        else
+          for i = 1,preset_count do
+            new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
+          end
           selected_preset = 1
-        end
-        for i = 1,preset_count do
-          new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
+          new_preset_unpack(selected_preset)
         end
         output = tonumber(io.read())
         params:set("time_div_opt", tonumber(io.read()))
@@ -1286,6 +1319,9 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
         params:set("oct_clamp_min", tonumber(io.read()))
         params:set("oct_clamp_max", tonumber(io.read()))
       else
+        --tlc for pre 2.2 saves
+        sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+        params:set("time_div_opt", 1)
         for i = 1,preset_count do
           new_preset_pool[i].sel_ppqn_div = util.round((1+#ppqn_divisions)/2) --set default clock div to centroid for old saves
         end
