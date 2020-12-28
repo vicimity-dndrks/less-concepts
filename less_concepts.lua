@@ -802,7 +802,7 @@ function enc(n,d)
             sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
           end
           redraw()
-        elseif edit == "cycle" then
+        elseif edit == "cycle" and preset_count > 0 then
           cycle_sel = util.clamp(cycle_sel + d, 1, #cycle_modes)
           redraw()
         end
@@ -875,7 +875,7 @@ end
 -- hardware: screen redraw
 function redraw()
   if screen_focus%2 == 1 then
-    if string.find(cycle_modes[cycle_sel], "*") ~= nil then
+    if string.find(cycle_modes[cycle_sel], "*") ~= nil and preset_count > 0 then
       seed_string = new_preset_pool[cycle_edit].seed
       rule_string = new_preset_pool[cycle_edit].rule
       lo_string = new_preset_pool[cycle_edit].new_low
@@ -913,6 +913,7 @@ function redraw()
       if cycle_modes[cycle_sel] ~= "-" and preset_count > 0 then 
         screen.text(" // p"..cycle_edit..": x" .. new_preset_pool[cycle_edit].p_duration)
       else
+        screen.level(2)
         screen.text(" // n/a")
       end
     screen.move(0,40)
