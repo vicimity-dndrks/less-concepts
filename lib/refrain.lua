@@ -10,14 +10,15 @@ function refrain.init()
   note_to_param = 0
   speedlist = {-2.0, -1.0, -0.5, -0.25, -0.125, 0.125, 0.25, 0.5, 1.0, 2.0}
   refrain.edit_foci = {
-  "ref_feedback",
-  "ref_offset",
-  "ref_rate",
-  "ref_pan",
-  "ref_bits",
-  "ref_rec",
-  "ref_presets"}
-  refrain.edit = "ref_feedback"
+    "engine_refrain",
+    "ref_feedback",
+    "ref_offset",
+    "ref_rate",
+    "ref_pan",
+    "ref_bits",
+    "ref_rec",
+    "ref_presets"}
+  refrain.edit = "engine_refrain"
   refrain.dd = 0
   
   params:add_control("engine_input", "engine -> ~ r e f r a i n", controlspec.new(0, 3, "lin", 0, 0, ""))
@@ -123,11 +124,11 @@ end
 
 function refrain.redraw()
   screen.clear()
-  screen.move(0,8)
+  screen.move(0,10)
   screen.font_face(1)
   screen.font_size(8)
-  screen.level(2)
-  screen.text("~ r e f r a i n")
+  screen.level(refrain.edit=="engine_refrain" and 15 or 2)
+  screen.text("engine -> ~ r e f r a i n: " .. params:get("engine_input"))
   
   screen.move(0,20)
   screen.level(refrain.edit=="ref_feedback" and 15 or 2)
@@ -189,11 +190,13 @@ end
 
 function refrain.enc(n,d)
   if n == 1 then
-    refrain.dd = util.clamp(refrain.dd+d,1,6)
+    refrain.dd = util.clamp(refrain.dd+d,1,7)
     refrain.edit = refrain.edit_foci[refrain.dd]
   end
   if n == 2 or n == 3 then
-    if refrain.edit == "ref_feedback" then
+    if refrain.edit == "engine_refrain" then
+      params:set("engine_input", util.clamp(params:get("engine_input") + d/100, 0, 3))
+    elseif refrain.edit == "ref_feedback" then
       params:set((n-1).."feedback", util.clamp(params:get((n-1).."feedback")+d/100,0,1))
     elseif refrain.edit == "ref_offset" then
       track[n-1].offset = util.clamp(track[n-1].offset+d/10,0,8)
