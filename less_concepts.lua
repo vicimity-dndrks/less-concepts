@@ -703,7 +703,7 @@ function key(n,z)
       KEY3 = true
       if KEY2 == false then
         if edit == "cycle" then
-          if ~is_cycle_editing then
+          if is_cycle_editing == false then
             if cycle_modes[cycle_sel] ~= "-" then
               cycle_sel = cycle_sel + 3
             end
