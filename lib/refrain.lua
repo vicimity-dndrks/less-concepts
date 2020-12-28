@@ -195,7 +195,11 @@ function refrain.enc(n,d)
   end
   if n == 2 or n == 3 then
     if refrain.edit == "engine_refrain" then
-      params:set("engine_input", util.clamp(params:get("engine_input") + d/100, 0, 3))
+      if n == 2 then
+        params:set("engine_input", util.clamp(params:get("engine_input") + d/2, 0, 3))
+      else
+        params:set("engine_input", util.clamp(params:get("engine_input") + d/100, 0, 3))
+      end
     elseif refrain.edit == "ref_feedback" then
       params:set((n-1).."feedback", util.clamp(params:get((n-1).."feedback")+d/100,0,1))
     elseif refrain.edit == "ref_offset" then

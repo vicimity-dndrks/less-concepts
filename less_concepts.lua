@@ -128,6 +128,7 @@ local cycle_sel = 1
 local cycle_edit = 1
 local p_duration = 16
 local p_duration_counter = 1
+local gridnote = 0
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -290,6 +291,7 @@ local function iterate()
     seed = next_seed
     bang()
     scale(new_low,new_high,seed)
+    gridnote = scaled
     for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
       if seed_as_binary[voice[i].bit] == 1 then
         --print(notes[coll][scaled])
@@ -674,6 +676,7 @@ end
 
 -- hardware: key interaction
 function key(n,z)
+  is_cycle_editing = (string.find(cycle_modes[cycle_sel], "*") ~= nil)
   if n == 1 and z == 1 then
     screen_focus = screen_focus + 1
   end
@@ -699,7 +702,15 @@ function key(n,z)
     if n == 3 and z == 1 then
       KEY3 = true
       if KEY2 == false then
-        if edit ~= "presets" then
+        if edit == "cycle" then
+          if ~is_cycle_editing then
+            if cycle_modes[cycle_sel] ~= "-" then
+              cycle_sel = cycle_sel + 3
+            end
+          else
+            cycle_sel = cycle_sel - 3
+          end
+        elseif edit ~= "presets" then
           randomize_some()
         else
           randomize_all()
@@ -803,7 +814,9 @@ function enc(n,d)
           end
           redraw()
         elseif edit == "cycle" and preset_count > 0 then
-          cycle_sel = util.clamp(cycle_sel + d, 1, #cycle_modes)
+          if string.find(cycle_modes[cycle_sel], "*") == nil then
+            cycle_sel = util.clamp(cycle_sel + d, 1, #cycle_modes - 3)
+          end
           redraw()
         end
       elseif n == 3 then
@@ -837,7 +850,7 @@ function enc(n,d)
           if string.find(cycle_modes[cycle_sel], "*") ~= nil then
             
             new_preset_pool[cycle_edit].v2_octave = math.min(3,(math.max(new_preset_pool[cycle_edit].v2_octave + d,-3)))
-            print(new_preset_pool[cycle_edit].v2_octave )
+            --print(new_preset_pool[cycle_edit].v2_octave )
           else
             voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
           end
@@ -959,6 +972,11 @@ function redraw()
           screen.text("*")
           screen.level(edit == "presets" and 15 or 2)
           screen.move(x_pos,y_pos)
+          if string.find(cycle_modes[cycle_sel], "*") ~= nil or edit == "presets" then
+            screen.level(15)
+          else
+            screen.level(2)
+          end
           screen.text("_")
         else
           --if edit == "presets" then or cycle_modes[cycle_sel] ~= "-" then
@@ -983,10 +1001,10 @@ g = grid.connect()
 -- hardware: grid event (eg 'what happens when a button is pressed')
 
 g.key = function(x,y,z)
-
+  is_cycle_editing = (string.find(cycle_modes[cycle_sel], "*") ~= nil)
   if y == 8 and x > 8 and x < 14 then
-
-    if y == 8 and x == 10 and z == 1then
+    local tmp_sel_ppqn = ""
+    if y == 8 and x == 10 and z == 1 then
       sel_ppqn_div = util.clamp(sel_ppqn_div - 1, 1, #ppqn_divisions) 
     end
     if y == 8 and x == 11 and z == 1 then
@@ -998,7 +1016,6 @@ g.key = function(x,y,z)
     grid_dirty = true
     redraw()
   end
-  
   if y == 1 and x <= 9 then -- ADDED: <= makes button 9 mute the track
     g:led(x,y,z*15)
     voice[1].bit = 9-x
@@ -1168,15 +1185,33 @@ function grid_redraw()
   g:led(16,8,6)
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
-  if new_low < 17 then
-    g:led(new_low,4,15)
+  if new_low <= 16 then
+    for i = 1, new_low do
+      g:led(i,4,2)
+    end
+    g:led(new_low,4,6)
   elseif new_low > 16 then
-    g:led(new_low-16,5,15)
+    for i = 1, 16 do 
+      g:led(i, 4, 2) 
+    end
+    for i = 1, new_low - 16 do
+      g:led(i,5,2)
+    end
+    g:led(new_low-16,5,6)
   end
-  if new_high < 17 then
-    g:led(new_high,6,15)
+  if new_high <= 16 then
+    for i = 1, 16 do
+      g:led(i,7,2)
+    end
+    for i = 16, new_high, -1 do
+      g:led(i,6,2)
+    end
+    g:led(new_high,6,6)
   elseif new_high > 16 then
-    g:led(new_high-16,7,15)
+    for i = 16, new_high-16, -1 do
+      g:led(i,7,2)
+    end
+    g:led(new_high-16,7,6)
   end
 
   --grid for time div buttons
@@ -1185,10 +1220,18 @@ function grid_redraw()
   local off_temp = util.round(15 / #ppqn_divisions) --creates offset for led_low_temp
   local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
   local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
-  --print(util.round((1-(sel_ppqn_div/#ppqn_divisions))*15), #ppqn_divisions, led_low_temp, led_high_temp)
+  
   g:led(10, 8, led_low_temp)
   g:led(11, 8, 8)
   g:led(12, 8, led_high_temp)
+  if gridnote <= 16 then
+    g:led(gridnote, 4, 2)
+    g:led(gridnote, 5, 4)
+  elseif gridnote > 16 and gridnote <= 32 then
+    g:led(gridnote - 16, 6, 4)
+    g:led(gridnote - 16, 7, 2)
+  end
+  
   g:refresh()
 end
 
@@ -1304,7 +1347,7 @@ end
 -- FIX SAVE params for w/syn and engine?
 
 function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
-  local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "w+")
+  local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "w+")
   io.output(file)
   io.write("permanence".."\n")
   io.write(preset_count.."\n")
@@ -1362,7 +1405,7 @@ end
 
 function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
   --selected_preset = 0
-  local file = io.open(_path.data .. "less_concepts-dev/less_concepts-pattern"..selected_set..".data", "r")
+  local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "r")
   if file then
     io.input(file)
     filetype = io.read()
