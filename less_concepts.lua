@@ -133,6 +133,8 @@ local gridnote = 0
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
 
+refrain = include "lib/refrain"
+
 local options = {}
 options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF", "crow w/syn"}
 
@@ -399,8 +401,6 @@ local function transpose(semitone)
   semi = semitone
 end
 
-refrain = include "lib/refrain"
-
 function wsyn_add_params()
   params:add_group("w/syn",10)
   params:add {
@@ -501,8 +501,6 @@ function init()
   new_seed = seed
   new_rule = rule
   
-  grid_dirty = true
-  clock.run(grid_redraw_clock) -- start the grid redraw clock
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
   seed_to_binary()
@@ -669,6 +667,19 @@ function init()
   --names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
 
   clock.run(pulse)
+
+  toggled = {}
+  counter = {} 
+  for x = 1,16 do 
+    toggled[x] = {}
+    counter[x] = {} 
+    for y = 1,8 do 
+      toggled[x][y] = false
+    end
+  end
+
+  grid_dirty = true
+  clock.run(grid_redraw_clock)
 
 end
 
@@ -1001,22 +1012,47 @@ g = grid.connect()
 -- hardware: grid event (eg 'what happens when a button is pressed')
 
 g.key = function(x,y,z)
-  is_cycle_editing = (string.find(cycle_modes[cycle_sel], "*") ~= nil)
-  if y == 8 and x > 8 and x < 14 then
-    local tmp_sel_ppqn = ""
-    if y == 8 and x == 10 and z == 1 then
+
+  -- buttons for clock divisions
+  if y == 8 and x >= 9 and x <= 12 then
+    if y == 8 and x == 9 and z == 1 then
       sel_ppqn_div = util.clamp(sel_ppqn_div - 1, 1, #ppqn_divisions) 
     end
-    if y == 8 and x == 11 and z == 1 then
+    if y == 8 and x == 10 and z == 1 then
       sel_ppqn_div = math.floor((#ppqn_divisions + 1) / 2)
     end
-    if y == 8 and x == 12 and z == 1then
+    if y == 8 and x == 11 and z == 1then
       sel_ppqn_div = util.clamp(sel_ppqn_div + 1, 1, #ppqn_divisions)
     end
     grid_dirty = true
     redraw()
   end
-  if y == 1 and x <= 9 then -- ADDED: <= makes button 9 mute the track
+
+  -- buttons for changing cycle modes
+  if y == 8 and x >= 12 and x <= 13 and preset_count > 0 then
+    if x == 12 and z == 1 then
+      if cycle_modes[cycle_sel] == "<" then
+        cycle_sel = cycle_sel - 2
+      elseif cycle_modes[cycle_sel] == ">" then
+        cycle_sel = cycle_sel + 1
+      elseif cycle_modes[cycle_sel] == "-" then
+        cycle_sel = cycle_sel + 2
+      end
+    end
+    if x == 13 and z == 1 then
+      if cycle_modes[cycle_sel] == ">" then
+        cycle_sel = cycle_sel - 1
+      elseif cycle_modes[cycle_sel] == "<" then
+          cycle_sel = cycle_sel - 1
+      elseif cycle_modes[cycle_sel] == "-" then
+        cycle_sel = cycle_sel + 1
+      end
+    end
+    grid_dirty = true
+    redraw()
+  end
+
+  if y == 1 and x <= 9 then -- ADDED: <= makes (9,1) mute voice 1
     g:led(x,y,z*15)
     voice[1].bit = 9-x
     redraw()
@@ -1031,7 +1067,7 @@ g.key = function(x,y,z)
     redraw()
     grid_dirty = true
   end
-  if y == 2 and x <= 9 then -- ADDED: <= makes button 9 mute the track
+  if y == 2 and x <= 9 then -- ADDED: <= makes (9,2) mute voice 2
     g:led(x,y,z*15)
     voice[2].bit = 9-x
     redraw()
@@ -1177,7 +1213,7 @@ function grid_redraw()
   g:led(14,3,4)
   g:led(16,3,4)
   for i=1,preset_count do
-    g:led(i,8,6)
+    g:led(i,8,4)
   end
   g:led(selected_preset,8,15)
   g:led(14,8,2)
@@ -1221,15 +1257,28 @@ function grid_redraw()
   local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
   local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
   
-  g:led(10, 8, led_low_temp)
-  g:led(11, 8, 8)
-  g:led(12, 8, led_high_temp)
+  g:led(9, 8, led_low_temp)
+  g:led(10, 8, 8)
+  g:led(11, 8, led_high_temp)
   if gridnote <= 16 then
     g:led(gridnote, 4, 2)
     g:led(gridnote, 5, 4)
   elseif gridnote > 16 and gridnote <= 32 then
     g:led(gridnote - 16, 6, 4)
     g:led(gridnote - 16, 7, 2)
+  end
+
+  if preset_count > 0 then
+    g:led(12,8,4)
+    g:led(13,8,4)
+    if cycle_modes[cycle_sel] == "<" then
+      g:led(12,8,15)
+    elseif cycle_modes[cycle_sel] == ">" then
+      g:led(13,8,15)
+    elseif cycle_modes[cycle_sel] == "~" then
+      g:led(12,8,15)
+      g:led(13,8,15)
+    end
   end
   
   g:refresh()
