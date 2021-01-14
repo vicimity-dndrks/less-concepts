@@ -124,8 +124,8 @@ ppqn_counter = 1
 local sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
 
 local cycle_modes = {"-", ">", "<", "~", ">*", "<*", "~*"} -- off, up, down, random
-local cycle_sel = 1
-local cycle_edit = 1
+local cycle_sel = "-"
+--local cycle_edit = 1
 local p_duration = 16
 local p_duration_counter = 1
 local gridnote = 0
@@ -136,7 +136,7 @@ passersby = include "passersby/lib/passersby_engine"
 refrain = include "lib/refrain"
 
 local options = {}
-options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF", "crow w/syn"}
+--options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF", "crow w/syn"}
 
 local destructive = false
 local preset_key_is_held = false
@@ -241,38 +241,41 @@ end
 
 local function notes_off(n)
   for i=1,#voice[n].active_notes do
-    m:note_off(voice[n].active_notes[i],0,voice[n].ch)
+    if params:get("voice_"..i.."_midi_A") == 2 then
+        m:note_off(voice[n].active_notes[i],0,params:get("midi_A"))
+    end
+    if params:get("voice_"..i.."_midi_B") == 2 then
+      m:note_off(voice[n].active_notes[i],0,params:get("midi_B"))
+    end
   end
   voice[n].active_notes = {}
 end
 
+--[[
 local function notes_off_v1()
   for i=1,#voice[1].active_notes do
-    m:note_off(voice[1].active_notes[i],0,voice[1].ch)
+    m:note_off(voice[1].active_notes[i],0,params:get("midi_A"))
   end
   voice[1].active_notes = {}
 end
 
 local function notes_off_v2()
   for i=1,#voice[2].active_notes do
-    m:note_off(voice[2].active_notes[i],0,voice[2].ch)
+    m:note_off(voice[2].active_notes[i],0,params:get("midi_B"))
   end
   voice[2].active_notes = {}
 end
+]]
 
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
 
 local function iterate()
   crow_gate_length = clock.get_beat_sec() / (2*ppqn_divisions[sel_ppqn_div]) --crow gate is half the length of selected time signature
-  --print(crow_gate_length)
   if ppqn_counter > ppqn / ppqn_divisions[sel_ppqn_div] then
-    --print(ppqn_counter)
-    --print(ppqn)
-    --print(ppqn_divisions[sel_ppqn_div])
     ppqn_counter = 1
     p_duration_counter = p_duration_counter + 1
 
-    if string.find(cycle_modes[cycle_sel], "*") then
+    if string.find(cycle_sel, "*") then
       destructive = true
     else
       destructive = false
@@ -286,22 +289,22 @@ local function iterate()
       local tmp_edit = edit
     elseif p_duration_counter > p_duration and preset_key_is_held == false then
       p_duration_counter = 1
-      if cycle_modes[cycle_sel] ~= "-" and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
-        if string.find(cycle_modes[cycle_sel], ">") then --cycle up
+      if cycle_sel ~= "-" and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
+        if string.find(cycle_sel, ">") then --cycle up
           selected_preset = selected_preset + 1
-          cycle_edit = cycle_edit + 1
+          --cycle_edit = cycle_edit + 1
           if selected_preset > preset_count then
             selected_preset = 1
-            cycle_edit = 1
+            --cycle_edit = 1
           end
-        elseif string.find(cycle_modes[cycle_sel], "<") then --cycle down
+        elseif string.find(cycle_sel, "<") then --cycle down
             selected_preset = selected_preset - 1
-            cycle_edit = cycle_edit - 1
+            --cycle_edit = cycle_edit - 1
           if selected_preset <= 0 then
             selected_preset = preset_count
-            cycle_edit = preset_count
+            --cycle_edit = preset_count
           end
-        elseif string.find(cycle_modes[cycle_sel], "~") then --cycle random
+        elseif string.find(cycle_sel, "~") then --cycle random
           selected_preset = math.random(1, preset_count)
         end
         new_preset_unpack(selected_preset)
@@ -324,6 +327,39 @@ local function iterate()
           else
             random_note[i].add = 0
           end
+
+--"voice_x_engine"
+--"voice_x_midi_A"
+--"voice_x_midi_B"
+--"voice_x_crow_1"
+--"voice_x_crow_2"
+--"voice_x_JF"
+--"voice_x_w"
+
+          if params:get("voice_"..i.."_engine") == 2 then
+            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
+          end
+          if params:get("voice_"..i.."_midi_A") == 2 then
+            m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_A"))
+          end
+          if params:get("voice_"..i.."_midi_B") == 2 then
+            m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_B"))
+          end
+          if params:get("voice_"..i.."_crow_1") == 2 then
+            crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[2].execute()
+          end
+          if params:get("voice_"..i.."_crow_2") == 2 then
+            crow.output[3].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+            crow.output[4].execute()
+          end
+          if params:get("voice_"..i.."_JF") == 2 then
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,8)
+          end
+          if params:get("voice_"..i.."_w") == 2 then
+            crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 8 .. ")")
+          end
+          --[[
           if params:get("output") == 1 then
             engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
             m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,voice[i].ch)
@@ -376,7 +412,8 @@ local function iterate()
               elseif i == 2 then
                 crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[2].octave*12)+semi+random_note[2].add)-48)/12 ..", " .. 8 .. ")")
             end
-          end
+            ]]
+          --end
           table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
         end
     end
@@ -406,14 +443,14 @@ function midi_to_hz(note)
 end
 
 -- allow user to define the MIDI channel voice 1 sends on
-local function midi_vox_1(channel)
-  voice[1].ch = channel
-end
+--local function midi_vox_A(channel)
+--  voice[1].ch = channel
+--end
 
 -- allow user to define the MIDI channel voice 2 sends on
-local function midi_vox_2(channel)
-  voice[2].ch = channel
-end
+--local function midi_vox_B(channel)
+--  voice[2].ch = channel
+--end
 
 -- allow user to define the transposition of voice 1 and voice 2, simultaneous changes to MIDI and Passersby engine
 local function transpose(semitone)
@@ -535,15 +572,64 @@ function init()
   params:set_action("set", function (x) selected_set = x end)
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
-  m = midi.connect()
+  m = midi.connect(1)
 
-  params:add_group("midi, outputs & timing", 4)
-  params:add_number("midi ch vox 1", "midi ch: vox 1", 1,16,1)
-  params:set_action("midi ch vox 1", function (x) midi_vox_1(x) end)
-  params:add_number("midi ch vox 2", "midi ch: vox 2", 1,16,1)
-  params:set_action("midi ch vox 2", function (x) midi_vox_2(x) end)
+  params:add_group("timing, midi & outputs", 23)
+
+  params:add_separator("timing")
+  params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
+  params:set_action("time_div_opt", function(x)
+    ppqn_divisions = ppqn_divisions_variants[x]
+    ppqn_names = ppqn_names_variants[x]
+    sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+  end)
+
+  params:add_separator("midi")
+  params:add_number("midi_device", "midi device", 1,4,1)
+  params:set_action("midi_device", function (x) m = midi.connect(x) end)
+  params:add_number("midi_A", "midi ch A", 1,16,1)
+  --params:set_action("midi_A", function (x) midi_vox_A(x) end)
+  params:add_number("midi_B", "midi ch B", 1,16,1)
+  --params:set_action("midi_B", function (x) midi_vox_B(x) end)
+  params:add_option("jfmode", "JF mode", {"off", "on"}, 1)
+  params:set_action("jfmode", function(x)
+    if x == 2 then
+      crow.ii.jf.mode(1)
+    else
+      crow.ii.jf.mode(0)
+    end
+  end)
   
-  params:add{type = "option", id = "output", name = "output",
+  params:add_separator("voice 1 outputs")
+  params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
+  params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 1)
+  params:add_option("voice_1_midi_B", "vox 1 -> midi ch B", {"no", "yes"}, 1)
+  params:add_option("voice_1_crow_1", "vox 1 -> crow 1/2", {"no", "yes"}, 1)
+  params:set_action("voice_1_crow_1", function (x)
+    crow.output[2].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
+  )
+  params:add_option("voice_1_crow_2", "vox 1 -> crow 3/4", {"no", "yes"}, 1)
+  params:set_action("voice_1_crow_2", function (x)
+    crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
+  )
+  params:add_option("voice_1_JF", "vox 1 -> ii JF", {"no", "yes"}, 1)
+  params:add_option("voice_1_w", "vox 1 -> w/syn", {"no", "yes"}, 1)
+  params:add_separator("voice 2 outputs")
+  params:add_option("voice_2_engine", "vox 2 -> engine", {"no", "yes"}, 2)
+  params:add_option("voice_2_midi_A", "vox 2 -> midi ch A", {"no", "yes"}, 1)
+  params:add_option("voice_2_midi_B", "vox 2 -> midi ch B", {"no", "yes"}, 1)
+  params:add_option("voice_2_crow_1", "vox 2 -> crow 1/2", {"no", "yes"}, 1)
+  params:set_action("voice_2_crow_1", function (x)
+    crow.output[2].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
+  )
+  params:add_option("voice_2_crow_2", "vox 2 -> crow 3/4", {"no", "yes"}, 1)
+  params:set_action("voice_2_crow_2", function (x)
+    crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
+  )
+  params:add_option("voice_2_JF", "vox 2 -> ii JF", {"no", "yes"}, 1)
+  params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
+
+  --[[params:add{type = "option", id = "output", name = "output",
     options = options.OUTPUT,
     action = function(value)
       if value == 1 then
@@ -570,15 +656,10 @@ function init()
         crow.send("ii.wsyn.ar_mode(" .. 1 .. ")")
         params:set("wsyn_ar_mode", 2) --set ar mode to on when w/syn is selected
       end
-    end}
-  params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
-  params:set_action("time_div_opt", function(x)
-    ppqn_divisions = ppqn_divisions_variants[x]
-    ppqn_names = ppqn_names_variants[x]
-    sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
-  end)
+    end}]]
 
-  params:add_group("scaling & randomization",19)
+  
+    params:add_group("scaling & randomization",19)
   params:add_option("scale", "scale", names, 1)
   params:set_action("scale", function(x) coll = x end)
   params:add_number("global transpose", "global transpose", -24,24,0)
@@ -608,12 +689,12 @@ function init()
       params:set("seed_clamp_max", params:get("seed_clamp_min") + 1)
     end
   end)
-  params:set_action("rule_clamp_min", function(x) 
+  params:set_action("rule_clamp_min", function(x)
     if x >= params:get("rule_clamp_max") then
       params:set("rule_clamp_min", params:get("rule_clamp_max") - 1)
     end
   end)
-  params:set_action("rule_clamp_max", function(x) 
+  params:set_action("rule_clamp_max", function(x)
     if x <= params:get("rule_clamp_min") then
       params:set("rule_clamp_max", params:get("rule_clamp_min") + 1)
     end
@@ -687,7 +768,7 @@ function init()
 
   clock.run(pulse)
 
-  toggled = {}
+  --[[toggled = {}
   counter = {} 
   for x = 1,16 do 
     toggled[x] = {}
@@ -695,7 +776,7 @@ function init()
     for y = 1,8 do 
       toggled[x][y] = false
     end
-  end
+  end]]
 
   grid_dirty = true
   clock.run(grid_redraw_clock)
@@ -706,7 +787,7 @@ end
 
 -- hardware: key interaction
 function key(n,z)
-  is_cycle_editing = (string.find(cycle_modes[cycle_sel], "*") ~= nil)
+  is_cycle_editing = (string.find(cycle_sel, "*") ~= nil)
   if n == 1 and z == 1 then
     screen_focus = screen_focus + 1
   end
@@ -734,11 +815,11 @@ function key(n,z)
       if KEY2 == false then
         if edit == "cycle" then
           if is_cycle_editing == false then
-            if cycle_modes[cycle_sel] ~= "-" then
-              cycle_sel = cycle_sel + 3
+            if cycle_sel ~= "-" then
+              cycle_sel = cycle_sel .. "*"
+            else
+              cycle_sel = string.sub(cycle_sel, 1, 1)
             end
-          else
-            cycle_sel = cycle_sel - 3
           end
         elseif edit ~= "presets" then
           randomize_some()
@@ -785,8 +866,8 @@ function enc(n,d)
     if KEY3 == false and KEY2 == false then
       if n == 2 then
         if edit == "presets" then
-          if cycle_modes[cycle_sel] ~= "-" then
-            cycle_edit = util.clamp(cycle_edit + d, 1, preset_count)
+          if cycle_sel ~= "-" then
+            --cycle_edit = util.clamp(cycle_modes + d, 1, preset_count)
           else
             selected_preset = util.clamp(selected_preset+d,1,preset_count)
           end
@@ -795,12 +876,12 @@ function enc(n,d)
         elseif edit == "lc_gate_probs" then
           params:set("gate prob 1", math.min(100,(math.max(params:get("gate prob 1") + d,0))))
         elseif edit == "low/high" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].new_low = math.min(32,(math.max(new_preset_pool[cycle_edit].new_low + d,1)))
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].new_low = math.min(32,(math.max(new_preset_pool[selected_preset].new_low + d,1)))
           else
             new_low = math.min(32,(math.max(new_low + d,1)))
           end
-          for i=1,16 do
+--[[      for i=1,16 do
             g:led(i,4,0)
             g:led(i,5,0)
             if new_low < 17 then
@@ -810,9 +891,10 @@ function enc(n,d)
             end
             grid_dirty = true
           end
+          ]]
         elseif edit == "octaves" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].v1_octave = math.min(3,(math.max(new_preset_pool[cycle_edit].v1_octave + d,-3)))
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].v1_octave = math.min(3,(math.max(new_preset_pool[selected_preset].v1_octave + d,-3)))
           else
             voice[1].octave = math.min(3,(math.max(voice[1].octave + d,-3)))
           end
@@ -822,14 +904,14 @@ function enc(n,d)
             grid_dirty = true
           end
         elseif edit == "lc_bits" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].v1_bit = math.min(8,(math.max(new_preset_pool[cycle_edit].v1_bit - d,0)))
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].v1_bit = math.min(8,(math.max(new_preset_pool[selected_preset].v1_bit - d,0)))
           else
             voice[1].bit = math.min(8,(math.max(voice[1].bit - d,0)))
           end
         elseif edit == "seed/rule" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].seed = math.min(255,(math.max(new_preset_pool[cycle_edit].seed + d,0)))
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].seed = math.min(255,(math.max(new_preset_pool[selected_preset].seed + d,0)))
           else
             new_seed = math.min(255,(math.max(new_seed + d,0)))
             seed = new_seed
@@ -837,32 +919,44 @@ function enc(n,d)
             bang()
           end
         elseif edit == "clock" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].sel_ppqn_div = util.clamp(new_preset_pool[cycle_edit].sel_ppqn_div + d, 1, #ppqn_divisions)  
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].sel_ppqn_div = util.clamp(new_preset_pool[selected_preset].sel_ppqn_div + d, 1, #ppqn_divisions)  
           else
             sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
           end
           redraw()
         elseif edit == "cycle" and preset_count > 0 then
-          if string.find(cycle_modes[cycle_sel], "*") == nil then
-            cycle_sel = util.clamp(cycle_sel + d, 1, #cycle_modes - 3)
+          --if string.find(cycle_sel, "*") == nil then
+            local current_cycle_mode = 1
+            for i=1,#cycle_modes do
+              if cycle_sel == cycle_modes[i] then
+                current_cycle_mode = i
+              end
+            end
+            if string.find(cycle_sel, "*") == nil then
+              cycle_sel = cycle_modes[util.clamp(current_cycle_mode + d, 1, #cycle_modes - 3)]
+            else
+              cycle_sel = cycle_modes[util.clamp(current_cycle_mode + d, #cycle_modes - 2, #cycle_modes)]
+            end
           end
           redraw()
-        end
+        --end
       elseif n == 3 then
         if edit == "presets" then
-          if cycle_modes[cycle_sel] ~= "-" then
-            new_preset_pool[cycle_edit].p_duration = util.clamp(new_preset_pool[cycle_edit].p_duration + d, 1, 64)
+          if cycle_sel ~= "-" then
+            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 64)
           else
-            cycle_edit = util.clamp(cycle_edit + d, 1, preset_count)
+            --cycle_edit = util.clamp(cycle_edit + d, 1, preset_count)
+            --p_duration = util.clamp(p_duration + d, 1, 64)
+            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 64)
           end
         elseif edit == "lc_gate_probs" then
           params:set("gate prob 2", math.min(100,(math.max(params:get("gate prob 2") + d,0))))
         elseif edit == "rand_prob" then
           params:set("tran prob 2", math.min(100,(math.max(params:get("tran prob 2") + d,0))))
         elseif edit == "low/high" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].new_high = math.min(32,(math.max(new_preset_pool[cycle_edit].new_high + d,1)))
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].new_high = math.min(32,(math.max(new_preset_pool[selected_preset].new_high + d,1)))
           else
             new_high = math.min(32,(math.max(new_high + d,1)))
           end
@@ -877,9 +971,9 @@ function enc(n,d)
             grid_dirty = true --new
           end
         elseif edit == "octaves" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
+          if string.find(cycle_sel, "*") ~= nil then
             
-            new_preset_pool[cycle_edit].v2_octave = math.min(3,(math.max(new_preset_pool[cycle_edit].v2_octave + d,-3)))
+            new_preset_pool[selected_preset].v2_octave = math.min(3,(math.max(new_preset_pool[selected_preset].v2_octave + d,-3)))
             --print(new_preset_pool[cycle_edit].v2_octave )
           else
             voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
@@ -891,14 +985,14 @@ function enc(n,d)
             grid_dirty = true --new
           end
         elseif edit == "lc_bits" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].v2_bit = math.min(8,(math.max(new_preset_pool[cycle_edit].v2_bit - d,0)))
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].v2_bit = math.min(8,(math.max(new_preset_pool[selected_preset].v2_bit - d,0)))
           else
             voice[2].bit = math.min(8,(math.max(voice[2].bit - d,0)))
           end
         elseif edit == "seed/rule" then
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil then
-            new_preset_pool[cycle_edit].rule = math.min(255,(math.max(new_preset_pool[cycle_edit].rule + d,0)))
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].rule = math.min(255,(math.max(new_preset_pool[selected_preset].rule + d,0)))
           else
             new_rule = math.min(255,(math.max(new_rule + d,0)))
             rule = new_rule
@@ -918,16 +1012,17 @@ end
 -- hardware: screen redraw
 function redraw()
   if screen_focus%2 == 1 then
-    if edit == "presets" then --string.find(cycle_modes[cycle_sel], "*") ~= nil and preset_count > 0 then
-      seed_string = new_preset_pool[cycle_edit].seed
-      rule_string = new_preset_pool[cycle_edit].rule
-      lo_string = new_preset_pool[cycle_edit].new_low
-      hi_string = new_preset_pool[cycle_edit].new_high
-      v1oct_string = new_preset_pool[cycle_edit].v1_octave
-      v2oct_string = new_preset_pool[cycle_edit].v2_octave
-      v1_b = new_preset_pool[cycle_edit].v1_bit
-      v2_b = new_preset_pool[cycle_edit].v2_bit
-      ppqn_string = ppqn_names[new_preset_pool[cycle_edit].sel_ppqn_div]
+    if edit == "presets" then --string.find(cycle_sel, "*") ~= nil and preset_count > 0 then
+      seed_string = new_preset_pool[selected_preset].seed
+      rule_string = new_preset_pool[selected_preset].rule
+      lo_string = new_preset_pool[selected_preset].new_low
+      hi_string = new_preset_pool[selected_preset].new_high
+      v1oct_string = new_preset_pool[selected_preset].v1_octave
+      v2oct_string = new_preset_pool[selected_preset].v2_octave
+      v1_b = new_preset_pool[selected_preset].v1_bit
+      v2_b = new_preset_pool[selected_preset].v2_bit
+      ppqn_string = ppqn_names[new_preset_pool[selected_preset].sel_ppqn_div]
+      p_dur_string = new_preset_pool[selected_preset].p_duration
     else
       seed_string = new_seed
       rule_string = new_rule
@@ -938,6 +1033,7 @@ function redraw()
       ppqn_string = ppqn_names[sel_ppqn_div]
       v1_b = voice[1].bit
       v2_b = voice[2].bit
+      p_dur_string = p_duration
     end
     screen.font_face(1)
     screen.font_size(8)
@@ -953,12 +1049,10 @@ function redraw()
     screen.level(edit == "low/high" and 15 or 2)
     screen.text("low: "..lo_string.." // high: "..hi_string)
     screen.level(edit == "presets" and 15 or 2)
-      if cycle_modes[cycle_sel] ~= "-" and preset_count > 0 then 
-        screen.text(" // p"..cycle_edit..": x" .. new_preset_pool[cycle_edit].p_duration)
-      else
-        screen.level(2)
-        screen.text(" // n/a")
-      end
+    if cycle_sel == "-" and preset_count == 0 then
+      screen.level(2)
+    end
+    screen.text(" // p"..selected_preset..": " .. p_dur_string)
     screen.move(0,40)
     screen.level(edit == "rand_prob" and 15 or 2)
     screen.text("tran prob 1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
@@ -974,7 +1068,7 @@ function redraw()
     screen.text(ppqn_string)
     screen.move(71,62)
     screen.level(edit == "cycle" and 15 or 2)
-    screen.text(cycle_modes[cycle_sel])
+    screen.text(cycle_sel)
     screen.move(0,62)
     screen.level(edit == "lc_bits" and 15 or 2)
     for i = 1,8 do
@@ -997,19 +1091,19 @@ function redraw()
       if preset_count < (i) then
         screen.text("_")
       else
-        if cycle_edit == i and cycle_modes[cycle_sel] ~= "-" then
+        if selected_preset == i and cycle_sel ~= "-" then
           screen.level(selected_preset == i and 15 or 2)
           screen.text("*")
           screen.level(edit == "presets" and 15 or 2)
           screen.move(x_pos,y_pos)
-          if string.find(cycle_modes[cycle_sel], "*") ~= nil or edit == "presets" then
+          if string.find(cycle_sel, "*") ~= nil or edit == "presets" then
             screen.level(15)
           else
             screen.level(2)
           end
           screen.text("_")
         else
-          --if edit == "presets" then or cycle_modes[cycle_sel] ~= "-" then
+          --if edit == "presets" then or cycle_sel ~= "-" then
             screen.level(selected_preset == i and 15 or 2)
           --end
           screen.text("*")
@@ -1027,6 +1121,45 @@ end
 -- hardware: grid connect
 
 g = grid.connect()
+
+function long_press(x)
+  clock.sleep(0.5)
+  if cycle_sel ~= "-" then
+    if string.find(cycle_sel, "*") then
+      if x == 12 then
+        cycle_sel = "<"
+      elseif x == 13 then
+        cycle_sel = ">"
+      end
+    else
+      if x == 12 then
+        cycle_sel = "<"
+      elseif x == 13 then
+        cycle_sel = ">"
+      end
+      cycle_sel = cycle_sel .. "*"
+    end
+  end
+  press_counter[x] = nil
+end
+
+function short_press(x)
+  if string.find(cycle_sel, "*") then
+    is_destructive = true
+  end
+  if cycle_sel == "<" and x == 12 then
+    cycle_sel = "-"
+  elseif cycle_sel == ">" and x == 13 then
+    cycle_sel = "-"
+  elseif x == 12 then
+    cycle_sel = "<"
+  elseif x == 13 then
+    cycle_sel = ">"
+  end
+  if destructive then cycle_sel = cycle_sel .. "*" end
+end
+
+press_counter = {}
 
 -- hardware: grid event (eg 'what happens when a button is pressed')
 
@@ -1049,22 +1182,12 @@ g.key = function(x,y,z)
 
   -- buttons for changing cycle modes
   if y == 8 and x >= 12 and x <= 13 and preset_count > 0 then
-    if x == 12 and z == 1 then
-      if cycle_modes[cycle_sel] == "<" then
-        cycle_sel = cycle_sel - 2
-      elseif cycle_modes[cycle_sel] == ">" then
-        cycle_sel = cycle_sel + 1
-      elseif cycle_modes[cycle_sel] == "-" then
-        cycle_sel = cycle_sel + 2
-      end
-    end
-    if x == 13 and z == 1 then
-      if cycle_modes[cycle_sel] == ">" then
-        cycle_sel = cycle_sel - 1
-      elseif cycle_modes[cycle_sel] == "<" then
-          cycle_sel = cycle_sel - 1
-      elseif cycle_modes[cycle_sel] == "-" then
-        cycle_sel = cycle_sel + 1
+    if z == 1 then
+      press_counter[x] = clock.run(long_press, x)
+    elseif z == 0 then
+      if press_counter[x] then
+        clock.cancel(press_counter[x])
+        short_press(x)
       end
     end
     grid_dirty = true
@@ -1167,10 +1290,10 @@ g.key = function(x,y,z)
   if y == 8 and z == 1 then
     if x < 9 and x < preset_count+1 then
       tmp_edit = edit
-      if cycle_modes[cycle_sel] ~= "-" then
+      if cycle_sel ~= "-" then
         preset_key_is_held = true
         edit = "presets"
-        cycle_edit = x
+        selected_preset = x
         new_preset_unpack(x)
         grid_dirty = true
       end
@@ -1300,11 +1423,11 @@ function grid_redraw()
   if preset_count > 0 then
     g:led(12,8,4)
     g:led(13,8,4)
-    if string.find(cycle_modes[cycle_sel], "<") then
+    if string.find(cycle_sel, "<") then
       g:led(12,8,15)
-    elseif string.find(cycle_modes[cycle_sel], ">") then
+    elseif string.find(cycle_sel, ">") then
       g:led(13,8,15)
-    elseif string.find(cycle_modes[cycle_sel], "~") then
+    elseif string.find(cycle_sel, "~") then
       g:led(12,8,15) -- TODO: make these flash (or whatever works best)
       g:led(13,8,15)
     end
@@ -1441,8 +1564,8 @@ function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
   end
   io.write(params:get("clock_tempo") .. "\n")
   io.write(params:get("clock_midi_out") .. "\n")
-  io.write(params:get("midi ch vox 1") .. "\n")
-  io.write(params:get("midi ch vox 2") .. "\n")
+  io.write(params:get("midi_A") .. "\n")
+  io.write(params:get("midi_B") .. "\n")
   io.write(params:get("scale") .. "\n")
   io.write(params:get("global transpose") .. "\n")
   for i=1,2 do
@@ -1518,15 +1641,15 @@ function loadstate() --CHANGE PATH BELOW BEFORE RELEASE!
       load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
         params:set("clock_tempo", 110)
         params:set("clock_midi_out", 1)
-        params:set("midi ch vox 1", 1)
-        params:set("midi ch vox 2", 1)
+        params:set("midi_A", 1)
+        params:set("midi_B", 1)
         params:set("scale", 1)
         params:set("global transpose", 0)
       else
         params:set("clock_tempo", load_bpm)
         params:set("clock_midi_out", load_clock)
-        params:set("midi ch vox 1", load_ch_1)
-        params:set("midi ch vox 2", load_ch_2)
+        params:set("midi_A", load_ch_1)
+        params:set("midi_B", load_ch_2)
         params:set("scale", load_scale)
         params:set("global transpose", load_global_trans)
         params:set("transpose 1", load_tran_1)
