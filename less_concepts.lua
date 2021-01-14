@@ -868,9 +868,9 @@ function enc(n,d)
         if edit == "presets" then
           if cycle_sel ~= "-" then
             --cycle_edit = util.clamp(cycle_modes + d, 1, preset_count)
-          else
-            selected_preset = util.clamp(selected_preset+d,1,preset_count)
           end
+            selected_preset = util.clamp(selected_preset+d,1,preset_count)
+          
         elseif edit == "rand_prob" then
           params:set("tran prob 1", math.min(100,(math.max(params:get("tran prob 1") + d,0))))
         elseif edit == "lc_gate_probs" then
@@ -878,9 +878,9 @@ function enc(n,d)
         elseif edit == "low/high" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].new_low = math.min(32,(math.max(new_preset_pool[selected_preset].new_low + d,1)))
-          else
-            new_low = math.min(32,(math.max(new_low + d,1)))
           end
+            new_low = math.min(32,(math.max(new_low + d,1)))
+          
 --[[      for i=1,16 do
             g:led(i,4,0)
             g:led(i,5,0)
@@ -895,9 +895,9 @@ function enc(n,d)
         elseif edit == "octaves" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].v1_octave = math.min(3,(math.max(new_preset_pool[selected_preset].v1_octave + d,-3)))
-          else
-            voice[1].octave = math.min(3,(math.max(voice[1].octave + d,-3)))
           end
+            voice[1].octave = math.min(3,(math.max(voice[1].octave + d,-3)))
+          
           for i=10,16 do
             g:led(i,1,0)
             g:led(voice[1].octave+13,1,15)
@@ -906,24 +906,24 @@ function enc(n,d)
         elseif edit == "lc_bits" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].v1_bit = math.min(8,(math.max(new_preset_pool[selected_preset].v1_bit - d,0)))
-          else
-            voice[1].bit = math.min(8,(math.max(voice[1].bit - d,0)))
           end
+            voice[1].bit = math.min(8,(math.max(voice[1].bit - d,0)))
+          
         elseif edit == "seed/rule" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].seed = math.min(255,(math.max(new_preset_pool[selected_preset].seed + d,0)))
-          else
+          end
             new_seed = math.min(255,(math.max(new_seed + d,0)))
             seed = new_seed
             rule = new_rule
             bang()
-          end
+          
         elseif edit == "clock" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].sel_ppqn_div = util.clamp(new_preset_pool[selected_preset].sel_ppqn_div + d, 1, #ppqn_divisions)  
-          else
-            sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
           end
+            sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
+          
           redraw()
         elseif edit == "cycle" and preset_count > 0 then
           --if string.find(cycle_sel, "*") == nil then
@@ -957,9 +957,9 @@ function enc(n,d)
         elseif edit == "low/high" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].new_high = math.min(32,(math.max(new_preset_pool[selected_preset].new_high + d,1)))
-          else
-            new_high = math.min(32,(math.max(new_high + d,1)))
           end
+            new_high = math.min(32,(math.max(new_high + d,1)))
+          
           for i=1,16 do
             g:led(i,6,0)
             g:led(i,7,0)
@@ -975,9 +975,9 @@ function enc(n,d)
             
             new_preset_pool[selected_preset].v2_octave = math.min(3,(math.max(new_preset_pool[selected_preset].v2_octave + d,-3)))
             --print(new_preset_pool[cycle_edit].v2_octave )
-          else
-            voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
           end
+            voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
+          
           
           for i=10,16 do
             g:led(i,2,0)
@@ -987,18 +987,18 @@ function enc(n,d)
         elseif edit == "lc_bits" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].v2_bit = math.min(8,(math.max(new_preset_pool[selected_preset].v2_bit - d,0)))
-          else
-            voice[2].bit = math.min(8,(math.max(voice[2].bit - d,0)))
           end
+            voice[2].bit = math.min(8,(math.max(voice[2].bit - d,0)))
+          
         elseif edit == "seed/rule" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].rule = math.min(255,(math.max(new_preset_pool[selected_preset].rule + d,0)))
-          else
+          end
             new_rule = math.min(255,(math.max(new_rule + d,0)))
             rule = new_rule
             seed = new_seed
             bang()
-          end
+          
         end
       end
     end
