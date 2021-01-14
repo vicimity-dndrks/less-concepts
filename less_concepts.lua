@@ -138,6 +138,8 @@ refrain = include "lib/refrain"
 local options = {}
 options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF", "crow w/syn"}
 
+local destructive = false
+local preset_key_is_held = false
 
 -- this section is all maths + computational events
 
@@ -269,18 +271,35 @@ local function iterate()
     --print(ppqn_divisions[sel_ppqn_div])
     ppqn_counter = 1
     p_duration_counter = p_duration_counter + 1
-    if p_duration_counter > p_duration then
+
+    if string.find(cycle_modes[cycle_sel], "*") then
+      destructive = true
+    else
+      destructive = false
+    end
+
+    if destructive then
+      new_preset_pack(selected_preset)
+    end
+
+    if preset_key_is_held then
+      local tmp_edit = edit
+    elseif p_duration_counter > p_duration and preset_key_is_held == false then
       p_duration_counter = 1
       if cycle_modes[cycle_sel] ~= "-" and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
         if string.find(cycle_modes[cycle_sel], ">") then --cycle up
           selected_preset = selected_preset + 1
+          cycle_edit = cycle_edit + 1
           if selected_preset > preset_count then
             selected_preset = 1
+            cycle_edit = 1
           end
         elseif string.find(cycle_modes[cycle_sel], "<") then --cycle down
-          selected_preset = selected_preset - 1
+            selected_preset = selected_preset - 1
+            cycle_edit = cycle_edit - 1
           if selected_preset <= 0 then
             selected_preset = preset_count
+            cycle_edit = preset_count
           end
         elseif string.find(cycle_modes[cycle_sel], "~") then --cycle random
           selected_preset = math.random(1, preset_count)
@@ -899,7 +918,7 @@ end
 -- hardware: screen redraw
 function redraw()
   if screen_focus%2 == 1 then
-    if string.find(cycle_modes[cycle_sel], "*") ~= nil and preset_count > 0 then
+    if edit == "presets" then --string.find(cycle_modes[cycle_sel], "*") ~= nil and preset_count > 0 then
       seed_string = new_preset_pool[cycle_edit].seed
       rule_string = new_preset_pool[cycle_edit].rule
       lo_string = new_preset_pool[cycle_edit].new_low
@@ -1147,6 +1166,14 @@ g.key = function(x,y,z)
   end
   if y == 8 and z == 1 then
     if x < 9 and x < preset_count+1 then
+      tmp_edit = edit
+      if cycle_modes[cycle_sel] ~= "-" then
+        preset_key_is_held = true
+        edit = "presets"
+        cycle_edit = x
+        new_preset_unpack(x)
+        grid_dirty = true
+      end
       new_preset_unpack(x)
       selected_preset = x
       grid_dirty = true
@@ -1167,6 +1194,12 @@ g.key = function(x,y,z)
       grid_dirty = true
       end
     end
+  elseif y == 8 and z == 0 then
+    if x < 9 and x < preset_count+1 then
+      preset_key_is_held = false
+      edit = tmp_edit
+      grid_dirty = true
+    end
   end
 end
 
@@ -1183,10 +1216,6 @@ end
 
 function grid_redraw()
   g:all(0)
-  for i=1,8 do
-    g:led(i,1,0)
-    g:led(i,2,0)
-  end
   for i = 1, 8 do
     if seed_as_binary[i] == 1 then
       g:led(9-i,1,2)
@@ -1216,9 +1245,9 @@ function grid_redraw()
     g:led(i,8,4)
   end
   g:led(selected_preset,8,15)
-  g:led(14,8,2)
-  g:led(15,8,4)
-  g:led(16,8,6)
+  g:led(14,8,2) --clear selected preset
+  g:led(15,8,4) --clear all presets
+  g:led(16,8,6) --add preset
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
   if new_low <= 16 then
@@ -1249,17 +1278,7 @@ function grid_redraw()
     end
     g:led(new_high-16,7,6)
   end
-
-  --grid for time div buttons
-  --thank you @Quixotic7
-  --local led_low_temp = util.round((1 - (15*sel_ppqn_div / #ppqn_divisions)) * 15)
-  local off_temp = util.round(15 / #ppqn_divisions) --creates offset for led_low_temp
-  local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
-  local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
-  
-  g:led(9, 8, led_low_temp)
-  g:led(10, 8, 8)
-  g:led(11, 8, led_high_temp)
+  --draw active note
   if gridnote <= 16 then
     g:led(gridnote, 4, 2)
     g:led(gridnote, 5, 4)
@@ -1268,15 +1287,25 @@ function grid_redraw()
     g:led(gridnote - 16, 7, 2)
   end
 
+  --grid for time div buttons
+  --thank you @Quixotic7
+  local off_temp = util.round(15 / #ppqn_divisions) --creates offset for led_low_temp
+  local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
+  local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
+  
+  g:led(9, 8, led_low_temp)
+  g:led(10, 8, 8)
+  g:led(11, 8, led_high_temp)
+
   if preset_count > 0 then
     g:led(12,8,4)
     g:led(13,8,4)
-    if cycle_modes[cycle_sel] == "<" then
+    if string.find(cycle_modes[cycle_sel], "<") then
       g:led(12,8,15)
-    elseif cycle_modes[cycle_sel] == ">" then
+    elseif string.find(cycle_modes[cycle_sel], ">") then
       g:led(13,8,15)
-    elseif cycle_modes[cycle_sel] == "~" then
-      g:led(12,8,15)
+    elseif string.find(cycle_modes[cycle_sel], "~") then
+      g:led(12,8,15) -- TODO: make these flash (or whatever works best)
       g:led(13,8,15)
     end
   end
