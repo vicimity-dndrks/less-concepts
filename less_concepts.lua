@@ -47,7 +47,7 @@ local coll = 1
 local new_seed = seed
 local new_rule = rule
 local screen_focus = 1
-local selected_preset = 0
+local selected_preset = 1
 local KEY2 = false
 local KEY3 = false
 local voice = {}
@@ -63,15 +63,16 @@ local preset_count = 0
 local active_notes_v1 = {}
 local active_notes_v2 = {}
 names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
-edit_foci = {"seed/rule",
-  "lc_gate_probs",
-  "low/high",
-  "rand_prob",
-  "octaves",
+edit_foci = {
   "lc_bits",
+  "seed/rule",
+  "octaves",
+  "low/high",
   "clock",
-  "cycle",
-  "presets"
+  "lc_gate_probs",
+  "rand_prob",
+  "presets",
+  "cycle"
 }
 local edit = "seed/rule"
 local dd = 0
@@ -129,11 +130,13 @@ local cycle_sel = "-"
 local p_duration = 16
 local p_duration_counter = 1
 local gridnote = 0
+local screennote = 0
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
 
 refrain = include "lib/refrain"
+MusicUtil = require "musicutil"
 
 local options = {}
 --options.OUTPUT = {"audio + midi", "crow cv (1x v/8)", "crow cv (2x v/8)", "crow ii JF", "crow cv + JF", "audio+cv+JF", "crow w/syn"}
@@ -315,9 +318,10 @@ local function iterate()
     seed = next_seed
     bang()
     scale(new_low,new_high,seed)
-    gridnote = scaled
+    --
     for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
       if seed_as_binary[voice[i].bit] == 1 then
+        
         --print(notes[coll][scaled])
         random_gate[i].comparator = math.random(0,100)
         if random_gate[i].comparator < random_gate[i].probability then
@@ -327,6 +331,9 @@ local function iterate()
           else
             random_note[i].add = 0
           end
+
+        gridnote = scaled
+        screennote = notes[coll][scaled]
 
 --"voice_x_engine"
 --"voice_x_midi_A"
@@ -602,7 +609,7 @@ function init()
   
   params:add_separator("voice 1 outputs")
   params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
-  params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 1)
+  params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 2)
   params:add_option("voice_1_midi_B", "vox 1 -> midi ch B", {"no", "yes"}, 1)
   params:add_option("voice_1_crow_1", "vox 1 -> crow 1/2", {"no", "yes"}, 1)
   params:set_action("voice_1_crow_1", function (x)
@@ -616,7 +623,7 @@ function init()
   params:add_option("voice_1_w", "vox 1 -> w/syn", {"no", "yes"}, 1)
   params:add_separator("voice 2 outputs")
   params:add_option("voice_2_engine", "vox 2 -> engine", {"no", "yes"}, 2)
-  params:add_option("voice_2_midi_A", "vox 2 -> midi ch A", {"no", "yes"}, 1)
+  params:add_option("voice_2_midi_A", "vox 2 -> midi ch A", {"no", "yes"}, 2)
   params:add_option("voice_2_midi_B", "vox 2 -> midi ch B", {"no", "yes"}, 1)
   params:add_option("voice_2_crow_1", "vox 2 -> crow 1/2", {"no", "yes"}, 1)
   params:set_action("voice_2_crow_1", function (x)
@@ -660,7 +667,7 @@ function init()
 
   
     params:add_group("scaling & randomization",19)
-  params:add_option("scale", "scale", names, 1)
+  params:add_option("scale", "scale", names, 8)
   params:set_action("scale", function(x) coll = x end)
   params:add_number("global transpose", "global transpose", -24,24,0)
   params:set_action("global transpose", function (x) transpose(x) end)
@@ -814,13 +821,12 @@ function key(n,z)
       KEY3 = true
       if KEY2 == false then
         if edit == "cycle" then
-          if is_cycle_editing == false then
-            if cycle_sel ~= "-" then
+          
+          if cycle_sel ~= "-" and string.find(cycle_sel, "*") == nil then
               cycle_sel = cycle_sel .. "*"
             else
               cycle_sel = string.sub(cycle_sel, 1, 1)
             end
-          end
         elseif edit ~= "presets" then
           randomize_some()
         else
@@ -869,8 +875,8 @@ function enc(n,d)
           if cycle_sel ~= "-" then
             --cycle_edit = util.clamp(cycle_modes + d, 1, preset_count)
           end
-            selected_preset = util.clamp(selected_preset+d,1,preset_count)
-          
+          selected_preset = util.clamp(selected_preset+d,1,preset_count)
+          new_preset_unpack(selected_preset)
         elseif edit == "rand_prob" then
           params:set("tran prob 1", math.min(100,(math.max(params:get("tran prob 1") + d,0))))
         elseif edit == "lc_gate_probs" then
@@ -917,40 +923,30 @@ function enc(n,d)
             seed = new_seed
             rule = new_rule
             bang()
-          
+        elseif edit == "cycle" and preset_count > 0 then
+          --if string.find(cycle_sel, "*") == nil then
+          local current_cycle_mode = 1
+          for i=1,#cycle_modes do
+            if cycle_sel == cycle_modes[i] then
+              current_cycle_mode = i
+            end
+          end
+          if string.find(cycle_sel, "*") == nil then
+            cycle_sel = cycle_modes[util.clamp(current_cycle_mode + d, 1, #cycle_modes - 3)]
+          else
+            cycle_sel = cycle_modes[util.clamp(current_cycle_mode + d, #cycle_modes - 2, #cycle_modes)]
+          end
         elseif edit == "clock" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].sel_ppqn_div = util.clamp(new_preset_pool[selected_preset].sel_ppqn_div + d, 1, #ppqn_divisions)  
           end
             sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
-          
-          redraw()
-        elseif edit == "cycle" and preset_count > 0 then
-          --if string.find(cycle_sel, "*") == nil then
-            local current_cycle_mode = 1
-            for i=1,#cycle_modes do
-              if cycle_sel == cycle_modes[i] then
-                current_cycle_mode = i
-              end
-            end
-            if string.find(cycle_sel, "*") == nil then
-              cycle_sel = cycle_modes[util.clamp(current_cycle_mode + d, 1, #cycle_modes - 3)]
-            else
-              cycle_sel = cycle_modes[util.clamp(current_cycle_mode + d, #cycle_modes - 2, #cycle_modes)]
-            end
-          end
+          redraw()  
+        end
           redraw()
         --end
       elseif n == 3 then
-        if edit == "presets" then
-          if cycle_sel ~= "-" then
-            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 64)
-          else
-            --cycle_edit = util.clamp(cycle_edit + d, 1, preset_count)
-            --p_duration = util.clamp(p_duration + d, 1, 64)
-            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 64)
-          end
-        elseif edit == "lc_gate_probs" then
+        if edit == "lc_gate_probs" then
           params:set("gate prob 2", math.min(100,(math.max(params:get("gate prob 2") + d,0))))
         elseif edit == "rand_prob" then
           params:set("tran prob 2", math.min(100,(math.max(params:get("tran prob 2") + d,0))))
@@ -998,8 +994,24 @@ function enc(n,d)
             rule = new_rule
             seed = new_seed
             bang()
-          
+
+        elseif edit == "clock" then
+          if string.find(cycle_sel, "*") ~= nil then
+            new_preset_pool[selected_preset].sel_ppqn_div = util.clamp(new_preset_pool[selected_preset].sel_ppqn_div + d, 1, #ppqn_divisions)  
+          end
+            sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
+        elseif edit == "cycle" and preset_count > 0 then
+          if cycle_sel ~= "-" and string.find(cycle_sel, "*") ~= nil then
+            --print(d)
+            p_duration = util.clamp(p_duration + d, 1, 64)
+            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 64)
+          elseif cycle_sel == "-" then
+            p_duration = util.clamp(p_duration + d, 1, 64)
+            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 64)
+          end
         end
+          redraw()
+        
       end
     end
     redraw()
@@ -1012,7 +1024,7 @@ end
 -- hardware: screen redraw
 function redraw()
   if screen_focus%2 == 1 then
-    if edit == "presets" then --string.find(cycle_sel, "*") ~= nil and preset_count > 0 then
+    if edit == "presets" and preset_count > 0 and string.find(cycle_sel, "*") ~= nil then
       seed_string = new_preset_pool[selected_preset].seed
       rule_string = new_preset_pool[selected_preset].rule
       lo_string = new_preset_pool[selected_preset].new_low
@@ -1040,47 +1052,133 @@ function redraw()
     screen.clear()
     screen.level(15)
     screen.move(0,10)
+
+    local highlight = edit == "lc_bits" and 15 or 4
+    for i = 0,7 do
+      bit = seed_as_binary[8-i]
+      if bit == 1 then
+       screen.level(highlight)
+      else
+       screen.level(1)
+      end
+      screen.rect(5*i,2,4,4)
+      screen.fill()
+    end
+    
+    screen.level(edit == "lc_bits" and 15 or 2)
+    screen.line_width(1)
+    screen.move(5*8-5*(v1_b),1)
+    screen.line_rel(4,0)
+    screen.move(5*8-5*(v2_b),8)
+    screen.line_rel(4,0)
+    screen.stroke()
+    
+    screen.move(48,8)
     screen.level(edit == "seed/rule" and 15 or 2)
-    screen.text("seed: "..seed_string.." // rule: "..rule_string)
-    screen.move(0,20)
-    screen.level(edit == "lc_gate_probs" and 15 or 2)
-    screen.text("gate prob 1: "..params:get("gate prob 1").."% // 2: "..params:get("gate prob 2").."%")
-    screen.move(0,30)
+    screen.text("s: "..seed_string.." // r: "..rule_string)
+    screen.level(edit == "octaves" and 15 or 2)
+    screen.move(48,16)
+    screen.text("oct 1: "..v1oct_string.." // 2: "..v2oct_string)
+    screen.move(48,24)
     screen.level(edit == "low/high" and 15 or 2)
     screen.text("low: "..lo_string.." // high: "..hi_string)
-    screen.level(edit == "presets" and 15 or 2)
-    if cycle_sel == "-" and preset_count == 0 then
-      screen.level(2)
-    end
-    screen.text(" // p"..selected_preset..": " .. p_dur_string)
-    screen.move(0,40)
-    screen.level(edit == "rand_prob" and 15 or 2)
-    screen.text("tran prob 1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
-    screen.move(0,50)
-    screen.level(edit == "octaves" and 15 or 2)
-    screen.text("vox 1 oct: "..v1oct_string)
-    screen.move(57,50)
-    screen.level(edit == "octaves" and 15 or 2)
-    screen.text("// vox 2 oct: "..v2oct_string)
-    --ADDED: screen info for clock divider
-    screen.move(46,62)
+    screen.move(48,32)
     screen.level(edit == "clock" and 15 or 2)
-    screen.text(ppqn_string)
-    screen.move(71,62)
-    screen.level(edit == "cycle" and 15 or 2)
-    screen.text(cycle_sel)
-    screen.move(0,62)
-    screen.level(edit == "lc_bits" and 15 or 2)
-    for i = 1,8 do
-      screen.text(seed_as_binary[9-i])
-      screen.move((5*i),62)
+    screen.text("sync: "..ppqn_string)
+    
+    screen.level(edit == "lc_gate_probs" and 15 or 2)
+    screen.move(3,41)
+    screen.text("gate prob")
+    screen.move(48,41)
+    screen.text("1: "..params:get("gate prob 1").."% // 2: "..params:get("gate prob 2").."%")
+    screen.level(edit == "rand_prob" and 15 or 2)
+    screen.move(3,49)
+    screen.text("tran prob")
+    screen.move(48,49)
+    screen.text("1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
+
+    for i = 0,1 do
+      for j = 0,7 do
+        screen.level(1)
+        if j < preset_count then
+          screen.level(3)
+        end
+        if (j + 1) == selected_preset and preset_count > 0 then
+          screen.level(edit == "presets" and 15 or 6)
+        end
+        screen.rect(j*5,54 + i*5,4,4)
+        screen.fill()
+      end
     end
-    screen.font_size(10)
-    screen.move(40-(5*v1_b),59)
-    screen.text("-")
-    screen.move(40-(5*v2_b),67)
-    screen.text("-")
+
+    --draw durrently triggered note
+    screen.font_size(24)
+    screen.move(4, 32)
+    screen.level(1)
+    --print(v1_b,v2_b)
+    if v1_b == 0 and v2_b == 0 then
+      screen.text("-")
+      screen.move(5, 30)
+      screen.level(8)
+      screen.text("-")
+    elseif screennote ~= nil then
+      screen.text(MusicUtil.note_num_to_name(screennote))
+      screen.move(5, 30)
+      screen.level(8)
+      screen.text(MusicUtil.note_num_to_name(screennote))
+    end
+
+    --cycle mode and preset duration
     screen.font_size(8)
+    screen.level(edit == "cycle" and 15 or 2)
+    screen.move(48,60)
+    screen.text(cycle_sel)
+    screen.move(60,60)
+    screen.text("p"..selected_preset.." duration: ".. p_dur_string)
+    
+
+    --screen.move(0,10)
+    --screen.level(edit == "seed/rule" and 15 or 2)
+    --screen.text("seed: "..seed_string.." // rule: "..rule_string)
+    --screen.move(0,20)
+    --screen.level(edit == "lc_gate_probs" and 15 or 2)
+    --screen.text("gate prob 1: "..params:get("gate prob 1").."% // 2: "..params:get("gate prob 2").."%")
+    --screen.move(0,30)
+    --screen.level(edit == "low/high" and 15 or 2)
+    --screen.text("low: "..lo_string.." // high: "..hi_string)
+    --screen.level(edit == "presets" and 15 or 2)
+    --if cycle_sel == "-" and preset_count == 0 then
+    --  screen.level(2)
+    --end
+    --screen.text(" // p"..selected_preset..": " .. p_dur_string)
+    --screen.move(0,40)
+    --screen.level(edit == "rand_prob" and 15 or 2)
+    --screen.text("tran prob 1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
+    --screen.move(0,50)
+    --screen.level(edit == "octaves" and 15 or 2)
+    --screen.text("vox 1 oct: "..v1oct_string)
+    --screen.move(57,50)
+    --screen.level(edit == "octaves" and 15 or 2)
+    --screen.text("// vox 2 oct: "..v2oct_string)
+    --ADDED: screen info for clock divider
+    --screen.move(46,62)
+    --screen.level(edit == "clock" and 15 or 2)
+    --screen.text(ppqn_string)
+    --screen.move(71,62)
+    --screen.level(edit == "cycle" and 15 or 2)
+    --screen.text(cycle_sel)
+    --screen.move(0,62)
+    --screen.level(edit == "lc_bits" and 15 or 2)
+    --for i = 1,8 do
+    --  screen.text(seed_as_binary[9-i])
+    --  screen.move((5*i),62)
+    --end
+    --screen.font_size(10)
+    --screen.move(40-(5*v1_b),59)
+    --screen.text("-")
+    --screen.move(40-(5*v2_b),67)
+    --screen.text("-")
+    --[[screen.font_size(8)
     screen.level(15)
     screen.move(30,60)
     for i = 1,8 do
@@ -1110,7 +1208,7 @@ function redraw()
         end
       end
       
-    end
+    end]]
     screen.update()
   elseif screen_focus%2==0 then
     -- PUT OTHER SCREEN REDRAW HERE
@@ -1123,6 +1221,7 @@ end
 g = grid.connect()
 
 function long_press(x)
+  
   clock.sleep(0.5)
   if cycle_sel ~= "-" then
     if string.find(cycle_sel, "*") then
@@ -1292,7 +1391,7 @@ g.key = function(x,y,z)
       tmp_edit = edit
       if cycle_sel ~= "-" then
         preset_key_is_held = true
-        edit = "presets"
+        edit = "cycle"
         selected_preset = x
         new_preset_unpack(x)
         grid_dirty = true
@@ -1308,7 +1407,7 @@ g.key = function(x,y,z)
       for i=1,8 do
         g:led(i,8,0)
       end
-      selected_preset = 0
+      selected_preset = 1
       grid_dirty = true
     elseif x == 16 then
       if preset_count < 8 then
@@ -1367,7 +1466,9 @@ function grid_redraw()
   for i=1,preset_count do
     g:led(i,8,4)
   end
-  g:led(selected_preset,8,15)
+  if preset_count > 0 then
+    g:led(selected_preset,8,15)
+  end
   g:led(14,8,2) --clear selected preset
   g:led(15,8,4) --clear all presets
   g:led(16,8,6) --add preset
@@ -1402,12 +1503,14 @@ function grid_redraw()
     g:led(new_high-16,7,6)
   end
   --draw active note
-  if gridnote <= 16 then
-    g:led(gridnote, 4, 2)
-    g:led(gridnote, 5, 4)
-  elseif gridnote > 16 and gridnote <= 32 then
-    g:led(gridnote - 16, 6, 4)
-    g:led(gridnote - 16, 7, 2)
+  if gridnote ~= nil then
+    if gridnote <= 16 then
+      g:led(gridnote, 4, 2)
+      g:led(gridnote, 5, 4)
+    elseif gridnote > 16 and gridnote <= 32 then
+      g:led(gridnote - 16, 6, 4)
+      g:led(gridnote - 16, 7, 2)
+    end
   end
 
   --grid for time div buttons
