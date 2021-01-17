@@ -1137,16 +1137,16 @@ function redraw()
     screen.move(48,49)
     screen.text("1: "..params:get("tran prob 1").."% // 2: "..params:get("tran prob 2").."%")
 
-    for i = 0,1 do
-      for j = 0,7 do
+    for i = 1,2 do
+      for j = 1,8 do
         screen.level(1)
         if j < preset_count then
           screen.level(3)
         end
-        if (j + 1) == selected_preset and preset_count > 0 then
+        if j + ((i-1)*8) == selected_preset and preset_count > 0 then
           screen.level(edit == "presets" and 15 or 6)
         end
-        screen.rect(j*5,54 + i*5,4,4)
+        screen.rect((j-1)*5,54 + (i-1)*5,4,4)
         screen.fill()
       end
     end
