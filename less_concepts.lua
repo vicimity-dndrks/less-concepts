@@ -902,7 +902,7 @@ function enc(n,d)
   if screen_focus % 2 == 1 then
     if n == 1 then
       if preset_count > 0 then
-        dd = util.clamp(dd+d,1,17)
+        dd = util.clamp(dd+d,1,9)
         edit = edit_foci[dd]
       else
         dd = util.clamp(dd+d,1,8)
