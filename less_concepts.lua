@@ -1140,7 +1140,7 @@ function redraw()
     for i = 1,2 do
       for j = 1,8 do
         screen.level(1)
-        if j < preset_count then
+        if j + ((i-1)*8) <= preset_count then
           screen.level(3)
         end
         if j + ((i-1)*8) == selected_preset and preset_count > 0 then
