@@ -92,7 +92,7 @@ for i = 1,2 do
   random_note[i].add = 0
 end
 new_preset_pool = {}
-for i = 1,9 do
+for i = 1,17 do
   new_preset_pool[i] = {}
   new_preset_pool[i].seed = {}
   new_preset_pool[i].rule = {}
@@ -425,6 +425,36 @@ local function iterate()
         end
     end
 
+    function playnote(n)
+      play_n = notes[coll][n]
+      for i=1,2 do
+      if params:get("voice_"..i.."_engine") == 2 then
+        --engine.noteOn(i,midi_to_hz(play_n+(48+(voice[i].octave * 12)),100))
+      end
+      if params:get("voice_"..i.."_midi_A") == 2 then
+        m:note_on(play_n+(36+(voice[i].octave*12)),100,params:get("midi_A"))
+      end
+      if params:get("voice_"..i.."_midi_B") == 2 then
+        m:note_on(play_n+(36+(voice[i].octave*12)),100,params:get("midi_B"))
+      end
+      if params:get("voice_"..i.."_crow_1") == 2 then
+        crow.output[1].volts = ((play_n+(36+(voice[i].octave*12))-48)/12)
+        crow.output[2].execute()
+      end
+      if params:get("voice_"..i.."_crow_2") == 2 then
+        crow.output[3].volts = ((play_n+(36+(voice[i].octave*12))-48)/12)
+        crow.output[4].execute()
+      end
+      if params:get("voice_"..i.."_JF") == 2 then
+        crow.ii.jf.play_note(((play_n)+(36+(voice[i].octave*12))-48)/12,8)
+      end
+      if params:get("voice_"..i.."_w") == 2 then
+        crow.send("ii.wsyn.play_note(".. ((play_n)+(36+(voice[1].octave*12))-48)/12 ..", " .. 8 .. ")")
+      end
+    end
+    end
+
+
     -- EVENTS FOR R E F R A I N
       if seed_as_binary[track[i].bit] == 1 then
         random_gate[i+2].comparator = math.random(0,100)
@@ -563,6 +593,16 @@ function init()
   rule = 30
   new_seed = seed
   new_rule = rule
+
+  press_counter = {}
+  momentary = {}
+
+  for x = 1,16 do
+    momentary[x] = {}
+    for y = 1,8 do
+      momentary[x][y] = false
+    end
+  end
   
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
@@ -804,12 +844,12 @@ function key(n,z)
       KEY2 = true
       bang()
       --redraw()
-      if preset_count < 8 and edit ~= "presets" then
+      if preset_count <= 16 and edit ~= "presets" then
         preset_count = preset_count + 1
         new_preset_pack(preset_count)
         selected_preset = 1
         grid_dirty = true
-      elseif preset_count <= 8 and edit == "presets" then
+      elseif preset_count <= 16 and edit == "presets" then
         new_preset_unpack(selected_preset)
       end
     elseif n == 2 and z == 0 then
@@ -862,7 +902,7 @@ function enc(n,d)
   if screen_focus % 2 == 1 then
     if n == 1 then
       if preset_count > 0 then
-        dd = util.clamp(dd+d,1,9)
+        dd = util.clamp(dd+d,1,17)
         edit = edit_foci[dd]
       else
         dd = util.clamp(dd+d,1,8)
@@ -1225,16 +1265,20 @@ function long_press(x)
   clock.sleep(0.5)
   if cycle_sel ~= "-" then
     if string.find(cycle_sel, "*") then
-      if x == 12 then
+      if x == 6 then
         cycle_sel = "<"
-      elseif x == 13 then
+      elseif x == 8 then
         cycle_sel = ">"
+      elseif x == 7 then
+        cycle_sel = "~"
       end
     else
-      if x == 12 then
+      if x == 6 then
         cycle_sel = "<"
-      elseif x == 13 then
+      elseif x == 8 then
         cycle_sel = ">"
+      elseif x == 7 then
+        cycle_sel = "~"
       end
       cycle_sel = cycle_sel .. "*"
     end
@@ -1250,29 +1294,41 @@ function short_press(x)
     cycle_sel = "-"
   elseif cycle_sel == ">" and x == 13 then
     cycle_sel = "-"
-  elseif x == 12 then
+  elseif x == 6 then
     cycle_sel = "<"
-  elseif x == 13 then
+  elseif x == 8 then
     cycle_sel = ">"
+  elseif x == 7 then
+    cycle_sel = "~"
   end
   if destructive then cycle_sel = cycle_sel .. "*" end
 end
 
-press_counter = {}
-
 -- hardware: grid event (eg 'what happens when a button is pressed')
 
 g.key = function(x,y,z)
-
+--[[
+  --buttons for grid playing
+  if (y == 4 or y == 5) and z == 1 then
+    local offset = 0
+    if y == 5 then offset = 16 end
+    playnote(x+offset)
+  elseif (y == 4 or y == 5) and z == 0 then
+    local offset = 0
+    if y == 5 then offset = 16 end
+      m:note_off(play_n+(36+(voice[i].octave*12)),0,params:get("midi_A"))
+      m:note_off(play_n+(36+(voice[i].octave*12)),0,params:get("midi_B"))
+  end
+]]
   -- buttons for clock divisions
-  if y == 8 and x >= 9 and x <= 12 then
-    if y == 8 and x == 9 and z == 1 then
+  if y == 8 and x >= 14 and x <= 16 then
+    if y == 8 and x == 14 and z == 1 then
       sel_ppqn_div = util.clamp(sel_ppqn_div - 1, 1, #ppqn_divisions) 
     end
-    if y == 8 and x == 10 and z == 1 then
+    if y == 8 and x == 15 and z == 1 then
       sel_ppqn_div = math.floor((#ppqn_divisions + 1) / 2)
     end
-    if y == 8 and x == 11 and z == 1then
+    if y == 8 and x == 16 and z == 1then
       sel_ppqn_div = util.clamp(sel_ppqn_div + 1, 1, #ppqn_divisions)
     end
     grid_dirty = true
@@ -1280,7 +1336,7 @@ g.key = function(x,y,z)
   end
 
   -- buttons for changing cycle modes
-  if y == 8 and x >= 12 and x <= 13 and preset_count > 0 then
+  if y == 6 and x >= 6 and x <= 8 and preset_count > 0 then
     if z == 1 then
       press_counter[x] = clock.run(long_press, x)
     elseif z == 0 then
@@ -1323,6 +1379,26 @@ g.key = function(x,y,z)
     redraw()
     grid_dirty = true
   end
+  
+  if y == 6 and x == 15 then
+    g:led(x,y,15)
+    momentary[x][y] = z == 1 and true or false
+  elseif y == 6 and x == 16 then
+    g:led(x,y,15)
+    momentary[x][y] = z == 1 and true or false
+  end
+
+  if (y == 4 or y == 5) and z == 1 then
+    if momentary[15][6] then
+      if y == 4 then new_low = x
+      elseif y == 5 then new_low = x + 16 end
+    elseif momentary[16][6] then
+      if y == 4 then new_high = x
+      elseif y == 5 then new_high = x + 16 end
+    end
+  end
+
+  --[[
   if y == 4 and z == 1 then
     g:led(x,y,z*15)
     new_low = x
@@ -1347,6 +1423,7 @@ g.key = function(x,y,z)
     redraw()
     grid_dirty = true
   end
+  ]]
   if y == 3 and z == 1 then
     if x == 1 then
       seed = math.random(params:get("seed_clamp_min"),params:get("seed_clamp_max"))
@@ -1386,37 +1463,43 @@ g.key = function(x,y,z)
     bang()
     grid_dirty = true
   end
-  if y == 8 and z == 1 then
-    if x < 9 and x < preset_count+1 then
+  if (y == 8 or y == 7) and z == 1 then
+    if x < 9 then
+      if y == 7 and x < preset_count+1 then
+        selected_preset = x
+        new_preset_unpack(x)
+      end
+      if y == 8 and x+8 < preset_count+1 then
+        selected_preset = x+8
+        new_preset_unpack(x+8)
+      end
       tmp_edit = edit
       if cycle_sel ~= "-" then
         preset_key_is_held = true
         edit = "cycle"
-        selected_preset = x
         new_preset_unpack(x)
         grid_dirty = true
       end
-      new_preset_unpack(x)
-      selected_preset = x
       grid_dirty = true
-    elseif x == 14 and preset_count > 0 then
-      preset_remove(selected_preset)
-      grid_dirty = true
-    elseif x == 15 then
-      preset_count = 0
-      for i=1,8 do
-        g:led(i,8,0)
-      end
-      selected_preset = 1
-      grid_dirty = true
-    elseif x == 16 then
-      if preset_count < 8 then
-      preset_count = preset_count + 1
-      new_preset_pack(preset_count)
-      grid_dirty = true
-      end
     end
-  elseif y == 8 and z == 0 then
+  end
+  if y == 6 and z == 1 then
+    if x == 3 and preset_count > 0 then
+        preset_remove(selected_preset)
+        grid_dirty = true
+      elseif x == 2 then
+        preset_count = 0
+        --for i=1,8 do
+          --g:led(i,8,0)
+        --end
+        selected_preset = 1
+        grid_dirty = true
+      elseif x == 1 and preset_count < 16 then
+        preset_count = preset_count + 1
+        new_preset_pack(preset_count)
+        grid_dirty = true
+      end
+  elseif (y == 7 or y == 8) and z == 0 then
     if x < 9 and x < preset_count+1 then
       preset_key_is_held = false
       edit = tmp_edit
@@ -1452,6 +1535,7 @@ function grid_redraw()
   if seed_as_binary[voice[2].bit] == 1 then
     g:led(9-voice[2].bit,2,15)
   end
+
   g:led(1,3,4)
   g:led(2,3,4)
   g:led(4,3,4)
@@ -1463,55 +1547,83 @@ function grid_redraw()
   g:led(13,3,4)
   g:led(14,3,4)
   g:led(16,3,4)
-  for i=1,preset_count do
-    g:led(i,8,4)
+
+  for i=7,8 do
+    for j=1,8 do
+      g:led(j,i,2)
+    end
   end
+
+    if preset_count <= 8 then
+      for i=1,preset_count do
+        g:led(i,7,6)
+      end
+    else
+      for i=1,8 do
+        g:led(i,7,6)
+      end
+      for i=1,preset_count - 8 do
+        g:led(i,8,6)
+      end
+    end
+  
+  
   if preset_count > 0 then
-    g:led(selected_preset,8,15)
+    if selected_preset <= 8 then
+      g:led(selected_preset,7,15)
+    else
+      g:led(selected_preset-8,8,15)
+    end
   end
-  g:led(14,8,2) --clear selected preset
-  g:led(15,8,4) --clear all presets
-  g:led(16,8,6) --add preset
+  g:led(3,6,2) --clear selected preset
+  g:led(2,6,4) --clear all presets
+  g:led(1,6,6) --add preset
+
   g:led(voice[1].octave+13,1,15)
   g:led(voice[2].octave+13,2,15)
+
+  if momentary[15][6] then low_highlight = 15 else low_highlight = 6 end
+  if momentary[16][6] then high_highlight = 15 else high_highlight = 6 end
+  
   if new_low <= 16 then
-    for i = 1, new_low do
-      g:led(i,4,2)
-    end
-    g:led(new_low,4,6)
+    --for i = 1, new_low do
+      --g:led(i,4,2)
+    --end
+    g:led(new_low,4,low_highlight)
   elseif new_low > 16 then
-    for i = 1, 16 do 
-      g:led(i, 4, 2) 
-    end
-    for i = 1, new_low - 16 do
-      g:led(i,5,2)
-    end
-    g:led(new_low-16,5,6)
+    --for i = 1, 16 do 
+      --g:led(i, 4, 2) 
+    --end
+    --for i = 1, new_low - 16 do
+      --g:led(i,5,2)
+    --end
+    g:led(new_low-16,5,low_highlight)
   end
   if new_high <= 16 then
-    for i = 1, 16 do
-      g:led(i,7,2)
-    end
-    for i = 16, new_high, -1 do
-      g:led(i,6,2)
-    end
-    g:led(new_high,6,6)
+    --for i = 1, 16 do
+      --g:led(i,5,2)
+    --end
+    --for i = 16, new_high, -1 do
+      --g:led(i,4,2)
+    --end
+    g:led(new_high,4,high_highlight)
   elseif new_high > 16 then
-    for i = 16, new_high-16, -1 do
-      g:led(i,7,2)
-    end
-    g:led(new_high-16,7,6)
+    --for i = 16, new_high-16, -1 do
+      --g:led(i,7,2)
+    --end
+    g:led(new_high-16,5,high_highlight)
   end
   --draw active note
   if gridnote ~= nil then
     if gridnote <= 16 then
       g:led(gridnote, 4, 2)
-      g:led(gridnote, 5, 4)
     elseif gridnote > 16 and gridnote <= 32 then
-      g:led(gridnote - 16, 6, 4)
-      g:led(gridnote - 16, 7, 2)
+      g:led(gridnote - 16, 5, 2)
     end
   end
+
+  g:led(15,6,6)
+  g:led(16,6,6)
 
   --grid for time div buttons
   --thank you @Quixotic7
@@ -1519,20 +1631,25 @@ function grid_redraw()
   local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
   local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
   
-  g:led(9, 8, led_low_temp)
-  g:led(10, 8, 8)
-  g:led(11, 8, led_high_temp)
+  g:led(14, 8, led_low_temp)
+  g:led(15, 8, 8)
+  g:led(16, 8, led_high_temp)
 
   if preset_count > 0 then
-    g:led(12,8,4)
-    g:led(13,8,4)
+    g:led(6,6,4)
+    g:led(7,6,4)
+    g:led(8,6,4)
+    if string.find(cycle_sel, "*") ~= nil then
+      destructive_highlight = 15
+    else
+      destructive_highlight = 8
+    end
     if string.find(cycle_sel, "<") then
-      g:led(12,8,15)
+      g:led(6,6,destructive_highlight)
     elseif string.find(cycle_sel, ">") then
-      g:led(13,8,15)
+      g:led(8,6,destructive_highlight)
     elseif string.find(cycle_sel, "~") then
-      g:led(12,8,15) -- TODO: make these flash (or whatever works best)
-      g:led(13,8,15)
+      g:led(7,6,destructive_highlight)
     end
   end
   
@@ -1624,7 +1741,7 @@ end
 
 function preset_remove(set)
   if set ~= 0 then
-    for i = set,8 do
+    for i = set,16 do
       new_preset_pool[i].seed = new_preset_pool[i+1].seed
       new_preset_pool[i].rule = new_preset_pool[i+1].rule
       new_preset_pool[i].v1_bit = new_preset_pool[i+1].v1_bit
