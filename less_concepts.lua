@@ -124,7 +124,7 @@ local ppqn_names = ppqn_names_variants[1]
 ppqn_counter = 1
 local sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
 
-local cycle_modes = {"-", ">", "<", "~", ">*", "<*", "~*"} -- off, up, down, random
+local cycle_modes = {"-", "<", "~", ">", "<*", "~*", ">*"} -- off, up, down, random
 local cycle_sel = "-"
 --local cycle_edit = 1
 local p_duration = 16
@@ -274,6 +274,10 @@ end
 
 local function iterate()
   crow_gate_length = clock.get_beat_sec() / (2*ppqn_divisions[sel_ppqn_div]) --crow gate is half the length of selected time signature
+  if preset_count == 0 then 
+    p_duration = 16 
+    if edit == "cycle" then edit = "seed/rule" end
+  end
   if ppqn_counter > ppqn / ppqn_divisions[sel_ppqn_div] then
     ppqn_counter = 1
     p_duration_counter = p_duration_counter + 1
@@ -427,31 +431,29 @@ local function iterate()
 
     function playnote(n)
       play_n = notes[coll][n]
-      for i=1,2 do
-      if params:get("voice_"..i.."_engine") == 2 then
-        --engine.noteOn(i,midi_to_hz(play_n+(48+(voice[i].octave * 12)),100))
-      end
-      if params:get("voice_"..i.."_midi_A") == 2 then
-        m:note_on(play_n+(36+(voice[i].octave*12)),100,params:get("midi_A"))
-      end
-      if params:get("voice_"..i.."_midi_B") == 2 then
-        m:note_on(play_n+(36+(voice[i].octave*12)),100,params:get("midi_B"))
-      end
-      if params:get("voice_"..i.."_crow_1") == 2 then
-        crow.output[1].volts = ((play_n+(36+(voice[i].octave*12))-48)/12)
-        crow.output[2].execute()
-      end
-      if params:get("voice_"..i.."_crow_2") == 2 then
-        crow.output[3].volts = ((play_n+(36+(voice[i].octave*12))-48)/12)
-        crow.output[4].execute()
-      end
-      if params:get("voice_"..i.."_JF") == 2 then
-        crow.ii.jf.play_note(((play_n)+(36+(voice[i].octave*12))-48)/12,8)
-      end
-      if params:get("voice_"..i.."_w") == 2 then
-        crow.send("ii.wsyn.play_note(".. ((play_n)+(36+(voice[1].octave*12))-48)/12 ..", " .. 8 .. ")")
-      end
-    end
+        if params:get("voice_"..i.."_engine") == 2 then
+          engine.noteOn(i,midi_to_hz(play_n),100)
+        end
+        if params:get("gridplay_midi_A") == 2 then
+          m:note_on(play_n+(36),100,params:get("midi_A"))
+        end
+        if params:get("gridplay_midi_B") == 2 then
+          m:note_on(play_n+(36),100,params:get("midi_B"))
+        end
+        if params:get("gridplay_crow_1") == 2 then
+          crow.output[1].volts = ((play_n+(36)-48)/12)
+          crow.output[2].execute()
+        end
+        if params:get("gridplay_crow_2") == 2 then
+          crow.output[3].volts = ((play_n+(36)-48)/12)
+          crow.output[4].execute()
+        end
+        if params:get("gridplay_JF") == 2 then
+          crow.ii.jf.play_note(((play_n)+(36)-48)/12,8)
+        end
+        if params:get("gridplay_w") == 2 then
+          crow.send("ii.wsyn.play_note(".. ((play_n)+(36)-48)/12 ..", " .. 8 .. ")")
+        end
     end
 
 
@@ -609,11 +611,11 @@ function init()
   seed_to_binary()
   rule_to_binary()
   g = grid.connect()
-  g:led(new_low,4,15)
-  g:led(new_high,6,15)
-  g:led(voice[1].octave+13,1,15)
-  g:led(voice[2].octave+13,2,15)
-  grid_dirty = true
+  --g:led(new_low,4,15)
+  --g:led(new_high,6,15)
+  --g:led(voice[1].octave+13,1,15)
+  --g:led(voice[2].octave+13,2,15)
+  --grid_dirty = true
   params:add_group("load & save", 3)
   params:add_number("set", "set", 1,100,1)
   params:set_action("set", function (x) selected_set = x end)
@@ -621,7 +623,7 @@ function init()
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   m = midi.connect(1)
 
-  params:add_group("timing, midi & outputs", 23)
+  params:add_group("timing, midi & outputs", 31)
 
   params:add_separator("timing")
   params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
@@ -673,8 +675,23 @@ function init()
   params:set_action("voice_2_crow_2", function (x)
     crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
   )
-  params:add_option("voice_2_JF", "vox 2 -> ii JF", {"no", "yes"}, 1)
-  params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
+  params:add_option("gridplay_JF", "vox 2 -> ii JF", {"no", "yes"}, 1)
+  params:add_option("gridplay_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
+  params:add_separator("gridplay outputs")
+  params:add_option("gridplay_engine", "gridplay -> engine", {"no", "yes"}, 2)
+  params:add_option("gridplay_midi_A", "gridplay -> midi ch A", {"no", "yes"}, 2)
+  params:add_option("gridplay_midi_B", "gridplay -> midi ch B", {"no", "yes"}, 1)
+  params:add_option("gridplay_crow_1", "gridplay -> crow 1/2", {"no", "yes"}, 1)
+  params:set_action("gridplay_crow_1", function (x)
+    crow.output[2].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
+  )
+  params:add_option("gridplay_crow_2", "gridplay -> crow 3/4", {"no", "yes"}, 1)
+  params:set_action("gridplay_crow_2", function (x)
+    crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
+  )
+  params:add_option("gridplay_JF", "gridplay -> ii JF", {"no", "yes"}, 1)
+  params:add_option("gridplay_w", "gridplay -> w/syn", {"no", "yes"}, 1)
+  
 
   --[[params:add{type = "option", id = "output", name = "output",
     options = options.OUTPUT,
@@ -964,7 +981,6 @@ function enc(n,d)
             rule = new_rule
             bang()
         elseif edit == "cycle" and preset_count > 0 then
-          --if string.find(cycle_sel, "*") == nil then
           local current_cycle_mode = 1
           for i=1,#cycle_modes do
             if cycle_sel == cycle_modes[i] then
@@ -1041,8 +1057,7 @@ function enc(n,d)
           end
             sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
         elseif edit == "cycle" and preset_count > 0 then
-          if cycle_sel ~= "-" and string.find(cycle_sel, "*") ~= nil then
-            --print(d)
+          if cycle_sel ~= "-" and preset_key_is_held then
             p_duration = util.clamp(p_duration + d, 1, 64)
             new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 64)
           elseif cycle_sel == "-" then
@@ -1139,12 +1154,12 @@ function redraw()
 
     for i = 1,2 do
       for j = 1,8 do
-        screen.level(1)
+        if edit == "presets" then screen.level(2) else screen.level(1) end
         if j + ((i-1)*8) <= preset_count then
-          screen.level(3)
+          screen.level(4)
         end
         if j + ((i-1)*8) == selected_preset and preset_count > 0 then
-          screen.level(edit == "presets" and 15 or 6)
+          screen.level(edit == "presets" and 15 or 8)
         end
         screen.rect((j-1)*5,54 + (i-1)*5,4,4)
         screen.fill()
@@ -1290,9 +1305,11 @@ function short_press(x)
   if string.find(cycle_sel, "*") then
     is_destructive = true
   end
-  if cycle_sel == "<" and x == 12 then
+  if cycle_sel == "<" and x == 6 then
     cycle_sel = "-"
-  elseif cycle_sel == ">" and x == 13 then
+  elseif cycle_sel == ">" and x == 8 then
+    cycle_sel = "-"
+  elseif cycle_sel == "~" and x == 7 then
     cycle_sel = "-"
   elseif x == 6 then
     cycle_sel = "<"
@@ -1307,19 +1324,24 @@ end
 -- hardware: grid event (eg 'what happens when a button is pressed')
 
 g.key = function(x,y,z)
---[[
+
   --buttons for grid playing
   if (y == 4 or y == 5) and z == 1 then
     local offset = 0
     if y == 5 then offset = 16 end
     playnote(x+offset)
+    momentary[x][y] = true
   elseif (y == 4 or y == 5) and z == 0 then
     local offset = 0
+    momentary[x][y] = false
     if y == 5 then offset = 16 end
-      m:note_off(play_n+(36+(voice[i].octave*12)),0,params:get("midi_A"))
-      m:note_off(play_n+(36+(voice[i].octave*12)),0,params:get("midi_B"))
+      play_n = notes[coll][x+offset]
+      for i=1,2 do
+        m:note_off(play_n+36,0,params:get("midi_A"))
+        m:note_off(play_n+36,0,params:get("midi_B"))
+      end
   end
-]]
+
   -- buttons for clock divisions
   if y == 8 and x >= 14 and x <= 16 then
     if y == 8 and x == 14 and z == 1 then
@@ -1489,6 +1511,7 @@ g.key = function(x,y,z)
         grid_dirty = true
       elseif x == 2 then
         preset_count = 0
+        cycle_sel = "-"
         --for i=1,8 do
           --g:led(i,8,0)
         --end
@@ -1521,6 +1544,14 @@ end
 
 function grid_redraw()
   g:all(0)
+
+  for y=4,5 do
+    for x=1,16 do
+      if momentary[x][y] then g:led(x,y,8) end
+    end
+  end
+
+
   for i = 1, 8 do
     if seed_as_binary[i] == 1 then
       g:led(9-i,1,2)
