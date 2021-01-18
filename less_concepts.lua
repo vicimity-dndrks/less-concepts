@@ -633,6 +633,7 @@ function init()
     ppqn_divisions = ppqn_divisions_variants[x]
     ppqn_names = ppqn_names_variants[x]
     sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+    grid_dirty = true
   end)
 
   params:add_separator("midi")
@@ -1349,6 +1350,7 @@ g.key = function(x,y,z)
     playnote(x+offset)
     momentary[x][y] = true
     grid_dirty = true
+    redraw()
   elseif (y == 4 or y == 5) and z == 0 then
     local offset = 0
     --gridplay_active = false
