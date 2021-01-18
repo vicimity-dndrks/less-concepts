@@ -131,6 +131,7 @@ local p_duration = 16
 local p_duration_counter = 1
 local gridnote = 0
 local screennote = 0
+local gridplay_active = false
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -292,6 +293,16 @@ local function iterate()
       new_preset_pack(selected_preset)
     end
 
+    gridplay_active = false
+    for y = 1,8 do
+      for x = 4,5 do
+        if momentary[x][y] ~= nil then
+          gridplay_active = true
+          break
+        end
+      end
+    end
+
     if preset_key_is_held then
       local tmp_edit = edit
     elseif p_duration_counter > p_duration and preset_key_is_held == false then
@@ -431,6 +442,7 @@ local function iterate()
 
     function playnote(n)
       play_n = notes[coll][n]
+      screennote = play_n
         if params:get("voice_"..i.."_engine") == 2 then
           engine.noteOn(i,midi_to_hz(play_n),100)
         end
@@ -1171,7 +1183,12 @@ function redraw()
     screen.move(4, 32)
     screen.level(1)
     --print(v1_b,v2_b)
-    if v1_b == 0 and v2_b == 0 then
+    if gridplay_active then
+      screen.text(MusicUtil.note_num_to_name(screennote))
+      screen.move(5, 30)
+      screen.level(8)
+      screen.text(MusicUtil.note_num_to_name(screennote))
+    elseif v1_b == 0 and v2_b == 0 then
       screen.text("-")
       screen.move(5, 30)
       screen.level(8)
@@ -1334,6 +1351,7 @@ g.key = function(x,y,z)
     grid_dirty = true
   elseif (y == 4 or y == 5) and z == 0 then
     local offset = 0
+    --gridplay_active = false
     momentary[x][y] = false
     if y == 5 then offset = 16 end
       play_n = notes[coll][x+offset]
