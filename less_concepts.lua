@@ -293,16 +293,6 @@ local function iterate()
       new_preset_pack(selected_preset)
     end
 
-    gridplay_active = false
-    for y = 1,8 do
-      for x = 4,5 do
-        if momentary[x][y] ~= nil then
-          gridplay_active = true
-          break
-        end
-      end
-    end
-
     if preset_key_is_held then
       local tmp_edit = edit
     elseif p_duration_counter > p_duration and preset_key_is_held == false then
@@ -1175,6 +1165,16 @@ function redraw()
         end
         screen.rect((j-1)*5,54 + (i-1)*5,4,4)
         screen.fill()
+      end
+    end
+
+    gridplay_active = false
+    for y = 4,5 do
+      for x = 1,16 do
+        if momentary[x][y] == true then
+          gridplay_active = true
+          break
+        end
       end
     end
 
