@@ -675,8 +675,8 @@ function init()
   params:set_action("voice_2_crow_2", function (x)
     crow.output[4].action = "{to(5,0),to(0,".. crow_gate_length .. ")}" end
   )
-  params:add_option("gridplay_JF", "vox 2 -> ii JF", {"no", "yes"}, 1)
-  params:add_option("gridplay_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
+  params:add_option("voice_2_JF", "vox 2 -> ii JF", {"no", "yes"}, 1)
+  params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
   params:add_separator("gridplay outputs")
   params:add_option("gridplay_engine", "gridplay -> engine", {"no", "yes"}, 2)
   params:add_option("gridplay_midi_A", "gridplay -> midi ch A", {"no", "yes"}, 2)
@@ -1331,6 +1331,7 @@ g.key = function(x,y,z)
     if y == 5 then offset = 16 end
     playnote(x+offset)
     momentary[x][y] = true
+    grid_dirty = true
   elseif (y == 4 or y == 5) and z == 0 then
     local offset = 0
     momentary[x][y] = false
