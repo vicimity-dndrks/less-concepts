@@ -1344,23 +1344,26 @@ end
 g.key = function(x,y,z)
 
   --buttons for grid playing
-  if (y == 4 or y == 5) and z == 1 then
-    local offset = 0
-    if y == 5 then offset = 16 end
-    playnote(x+offset)
-    momentary[x][y] = true
-    grid_dirty = true
-    redraw()
-  elseif (y == 4 or y == 5) and z == 0 then
-    local offset = 0
-    --gridplay_active = false
-    momentary[x][y] = false
-    if y == 5 then offset = 16 end
-      play_n = notes[coll][x+offset]
-      for i=1,2 do
-        m:note_off(play_n+36,0,params:get("midi_A"))
-        m:note_off(play_n+36,0,params:get("midi_B"))
-      end
+  if momentary[15][6] == false and momentary[16][6] == false then
+    if (y == 4 or y == 5) and z == 1 then
+      local offset = 0
+      if y == 5 then offset = 16 end
+      playnote(x+offset)
+      momentary[x][y] = true
+      grid_dirty = true
+      redraw()
+    elseif (y == 4 or y == 5) and z == 0 then
+      local offset = 0
+      grid_dirty = true
+      --gridplay_active = false
+      momentary[x][y] = false
+      if y == 5 then offset = 16 end
+        play_n = notes[coll][x+offset]
+        for i=1,2 do
+          m:note_off(play_n+36,0,params:get("midi_A"))
+          m:note_off(play_n+36,0,params:get("midi_B"))
+        end
+    end
   end
 
   -- buttons for clock divisions
@@ -1439,6 +1442,7 @@ g.key = function(x,y,z)
       if y == 4 then new_high = x
       elseif y == 5 then new_high = x + 16 end
     end
+    grid_dirty = true
   end
 
   --[[
