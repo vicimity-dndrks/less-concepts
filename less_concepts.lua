@@ -538,11 +538,11 @@ function init()
   params:add_option("voice_1_midi_B", "vox 1 -> midi ch B", {"no", "yes"}, 1)
   params:add_option("voice_1_crow_1", "vox 1 -> crow 1/2", {"no", "yes"}, 1)
   params:set_action("voice_1_crow_1", function (x)
-    crow.output[2].action = "{to(crow_gate_volts,0),to(0,".. crow_gate_length .. ")}" 
+    crow.output[2].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
   end)
   params:add_option("voice_1_crow_2", "vox 1 -> crow 3/4", {"no", "yes"}, 1)
   params:set_action("voice_1_crow_2", function (x)
-    crow.output[4].action = "{to(crow_gate_volts,0),to(0,".. crow_gate_length .. ")}" 
+    crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
   end)
   params:add_option("voice_1_JF", "vox 1 -> ii JF", {"no", "yes"}, 1)
   params:add_option("voice_1_w", "vox 1 -> w/syn", {"no", "yes"}, 1)
@@ -552,11 +552,11 @@ function init()
   params:add_option("voice_2_midi_B", "vox 2 -> midi ch B", {"no", "yes"}, 1)
   params:add_option("voice_2_crow_1", "vox 2 -> crow 1/2", {"no", "yes"}, 1)
   params:set_action("voice_2_crow_1", function (x)
-    crow.output[2].action = "{to(crow_gate_volts,0),to(0,".. crow_gate_length .. ")}" 
+    crow.output[2].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
   end)
   params:add_option("voice_2_crow_2", "vox 2 -> crow 3/4", {"no", "yes"}, 1)
   params:set_action("voice_2_crow_2", function (x)
-    crow.output[4].action = "{to(crow_gate_volts,0),to(0,".. crow_gate_length .. ")}" 
+    crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
   end)
   params:add_option("voice_2_JF", "vox 2 -> ii JF", {"no", "yes"}, 1)
   params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
