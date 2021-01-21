@@ -183,7 +183,7 @@ end
 
 -- maths: scale seeds to the note pool + range selected
 local function scale(lo, hi, received)
-  scaled = math.floor(((((received) / (256)) * (hi - lo) + lo))) -- DAN: I changed this to received / 256 from received -1 & 256 - 1. s: 36 / r: 19 was giving wrong values.
+  scaled = math.floor(((((received) / (256)) * (hi + 1 - lo) + lo))) -- DAN: I changed this to received / 256 from received -1 & 256 - 1. s: 36 / r: 19 was giving wrong values. I also added (hi + 1) to include upper limit in scaling
   pass_to_refrain = received
 end
 
@@ -1165,9 +1165,11 @@ g.key = function(x,y,z)
   if y == 6 and x == 1 then
     g:led(x,y,15)
     momentary[x][y] = z == 1 and true or false
+    grid_dirty = true
   elseif y == 6 and x == 2 then
     g:led(x,y,15)
     momentary[x][y] = z == 1 and true or false
+    grid_dirty = true
   end
 
   --keys for changing low/high when select is momentary
@@ -1239,34 +1241,31 @@ g.key = function(x,y,z)
         preset_key_is_held = true
         --edit = "cycle"
         new_preset_unpack(x - 8)
-        grid_dirty = true
       end
-      grid_dirty = true
     end
+    grid_dirty = true
   end
 
   --key for removing presets
   if y == 6 and z == 1 then
     if x == 14 and preset_count > 0 then
         preset_remove(selected_preset)
-        grid_dirty = true
       elseif x == 15 then
         preset_count = 0
         cycle_sel = "-"
         selected_preset = 1
-        grid_dirty = true
       elseif x == 16 and preset_count < 16 then
         preset_count = preset_count + 1
         new_preset_pack(preset_count)
-        grid_dirty = true
       end
   elseif (y == 7 or y == 8) and z == 0 then
     if x > 8 and x < 17 and x < preset_count+9 then
       preset_key_is_held = false
       --edit = tmp_edit
-      grid_dirty = true
+      
     end
   end
+  grid_dirty = true
 end
 
 -- hardware: grid redraw
@@ -1283,13 +1282,7 @@ end
 function grid_redraw()
   g:all(0)
 
-  --remove this?
-  --for y=4,5 do
-  --  for x=1,16 do
-  --    if momentary[x][y] then g:led(x,y,8) end
-  --  end
-  --end
-
+  --leds for stream
   for i = 1, 8 do
     if seed_as_binary[i] == 1 then
       g:led(9-i,1,2)
@@ -1297,6 +1290,7 @@ function grid_redraw()
     end
   end
 
+  --leds for voices
   g:led(9-voice[1].bit,1,4)
   g:led(9-voice[2].bit,2,4)
   if seed_as_binary[voice[1].bit] == 1 then
@@ -1306,6 +1300,7 @@ function grid_redraw()
     g:led(9-voice[2].bit,2,15)
   end
 
+  --leds for randomization
   g:led(1,3,4)
   g:led(2,3,4)
   g:led(4,3,4)
@@ -1382,8 +1377,8 @@ function grid_redraw()
   end
 
   --leds for momentary select low/high
-  g:led(1,6,6)
-  g:led(2,6,6)
+  g:led(1,6,low_highlight)
+  g:led(2,6,high_highlight)
 
   --leds for time div buttons
   --thank you @Quixotic7
@@ -1412,7 +1407,6 @@ function grid_redraw()
       g:led(10,6,destructive_highlight)
     end
   end
-  
   g:refresh()
 end
 
