@@ -865,17 +865,12 @@ function enc(n,d)
             new_preset_pool[selected_preset].sel_ppqn_div = util.clamp(new_preset_pool[selected_preset].sel_ppqn_div + d, 1, #ppqn_divisions)  
           end
             sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
+
         elseif edit == "cycle" and preset_count > 0 then
-          if cycle_sel ~= "-" and preset_key_is_held then
-            p_duration = util.clamp(p_duration + d, 1, 32)
-            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 32)
-          elseif cycle_sel == "-" then
-            p_duration = util.clamp(p_duration + d, 1, 32)
-            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 32)
-          end
+          p_duration = util.clamp(p_duration + d, 1, 32)
+          new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 32)
         end
-          redraw()
-        
+        redraw()
       end
     end
     redraw()
@@ -1519,9 +1514,8 @@ end
 
 -- save snapshots as presets
 -- cannibalized from @justmat
--- FIX SAVE params for w/syn and engine?
 
-function savestate() --CHANGE PATH BELOW BEFORE RELEASE!
+function savestate()
   local file = io.open(_path.data .. "less_concepts/less_concepts-pattern"..selected_set..".data", "w+")
   io.output(file)
   io.write("permanence".."\n")
