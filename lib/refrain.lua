@@ -10,14 +10,14 @@ function refrain.init()
   note_to_param = 0
   speedlist = {-2.0, -1.0, -0.5, -0.25, -0.125, 0.125, 0.25, 0.5, 1.0, 2.0}
   refrain.edit_foci = {
+    "ref_bits",
     "engine_refrain",
     "ref_feedback",
     "ref_offset",
     "ref_rate",
     "ref_pan",
-    "ref_bits",
-    "ref_rec",
-    "ref_presets"}
+    "ref_rec"}--,
+    --"ref_presets"}
   refrain.edit = "engine_refrain"
   refrain.dd = 0
   
@@ -124,39 +124,72 @@ end
 
 function refrain.redraw()
   screen.clear()
-  screen.move(0,10)
+
+  local highlight = refrain.edit == "ref_bits" and 15 or 4
+  for i = 0,7 do
+    bit = seed_as_binary[8-i]
+    if bit == 1 then
+     screen.level(highlight)
+    else
+     screen.level(1)
+    end
+    screen.rect(5*i,2,4,4)
+    screen.fill()
+  end
+
+  screen.level(refrain.edit == "ref_bits" and 15 or 2)
+  screen.line_width(1)
+  screen.move(40 - (5*track[1].bit),1)
+  screen.line_rel(4,0)
+  screen.move(40 - (5*track[2].bit),8)
+  screen.line_rel(4,0)
+  screen.stroke()
+
   screen.font_face(1)
   screen.font_size(8)
+
+  screen.move(84,60)
+  screen.level(refrain.edit=="ref_rec" and 15 or 2)
+  screen.text(state[1].." | "..state[2])
+
+  screen.move(5, 60)
+  screen.level(2)
+  screen.text("~ r e f r a i n")
+
+  screen.move(0,16)
   screen.level(refrain.edit=="engine_refrain" and 15 or 2)
-  screen.text("engine -> ~ r e f r a i n: " .. params:get("engine_input"))
+  screen.text("eng -> ~ ref: " .. params:get("engine_input"))
   
-  screen.move(0,20)
+  screen.move(0,24)
   screen.level(refrain.edit=="ref_feedback" and 15 or 2)
-  screen.text("fb1: "..params:string("1feedback").." // fb2: "..params:string("2feedback"))
-  screen.move(0,30)
+  screen.text("feedback 1: "..params:string("1feedback").." // 2: "..params:string("2feedback"))
+  screen.move(0,32)
   screen.level(refrain.edit=="ref_offset" and 15 or 2)
-  screen.text("off1: "..string.format("%.1f", track[1].offset).." sec // off2: "..string.format("%.1f", track[2].offset).." sec")
+  screen.text("rec off 1: "..string.format("%.1f", track[1].offset).." s. // 2: "..string.format("%.1f", track[2].offset).." s.")
   screen.move(0,40)
   screen.level(refrain.edit=="ref_rate" and 15 or 2)
-  screen.text("rate1: "..speedlist[track[1].rate].." // rate2: "..speedlist[track[2].rate])
-  screen.move(0,50)
+  screen.text("rate 1: "..speedlist[track[1].rate].." // 2: "..speedlist[track[2].rate])
+  screen.move(0,48)
   screen.level(refrain.edit=="ref_pan" and 15 or 2)
-  screen.text("pan1: "..string.format("%.2f", track[1].pan).." // pan2: "..string.format("%.2f", track[2].pan))
-  screen.move(0,62)
-  screen.level(refrain.edit=="ref_bits" and 15 or 2)
-  for i = 1,8 do
-    screen.text(seed_as_binary[9-i])
-    screen.move((5*i),62)
-  end
+  screen.text("pan 1: "..string.format("%.2f", track[1].pan).." // 2: "..string.format("%.2f", track[2].pan))
+  --screen.move(0,62)
+  --screen.level(refrain.edit=="ref_bits" and 15 or 2)
+
+
+  --for i = 1,8 do
+  --  screen.text(seed_as_binary[9-i])
+  --  screen.move((5*i),62)
+  --end
+  
+  --[[
   screen.font_size(10)
   screen.move(40 - (5*track[1].bit),59)
   screen.text("-")
   screen.move(40 - (5*track[2].bit),67)
   screen.text("-")
   screen.font_size(8)
-  screen.move(85,62)
-  screen.level(refrain.edit=="ref_rec" and 15 or 2)
-  screen.text(state[1].." | "..state[2])
+  ]]
+
   screen.update()
 end
 
