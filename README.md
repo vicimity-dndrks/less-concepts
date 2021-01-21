@@ -1,2 +1,4 @@
 # less_concepts_dev
-rename folder to less_concepts-dev
+please rename folder to less_concepts
+
+![less concepts for monome norns](https://llllllll.co/uploads/default/original/3X/d/d/dd3f3d1bf8f625ba6a28fa3723f5ede1134c3ebe.jpeg)
