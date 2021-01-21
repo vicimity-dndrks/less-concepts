@@ -1542,14 +1542,6 @@ function savestate()
   end
   io.write("LCv2.2\n")
   if preset_count == 0 then
-    io.write(seed .. "\n")
-    io.write(rule .. "\n")
-    for i = 1, 2 do
-      io.write(voice[i].bit .. "\n")
-      io.write(voice[i].octave .. "\n")
-    end
-    io.write(new_low .. "\n")
-    io.write(new_high .. "\n")
     io.write(sel_ppqn_div .. "\n")
   else
     for i = 1,preset_count do
@@ -1557,7 +1549,7 @@ function savestate()
       io.write(new_preset_pool[i].p_duration .. "\n")
     end
   end
-  io.write(params:get("output") .. "\n")
+  --io.write(params:get("output") .. "\n")
   io.write(params:get("time_div_opt") .. "\n")
   io.write(params:get("seed_clamp_min") .. "\n")
   io.write(params:get("seed_clamp_max") .. "\n")
@@ -1627,14 +1619,6 @@ function loadstate()
       extended_file = io.read()
       if extended_file == "LCv2.2" then
         if preset_count == 0 then
-          new_seed = tonumber(io.read())
-          new_rule = tonumber(io.read())
-          for i = 1, 2 do
-            voice[i].bit = tonumber(io.read())
-            voice[i].oct = tonumber(io.read())
-          end
-          new_low = tonumber(io.read())
-          new_high = tonumber(io.read())
           sel_ppqn_div = tonumber(io.read())
         else
           for i = 1,preset_count do
@@ -1644,7 +1628,7 @@ function loadstate()
           selected_preset = 1
           new_preset_unpack(selected_preset)
         end
-        output = tonumber(io.read())
+        --output = tonumber(io.read())
         params:set("time_div_opt", tonumber(io.read()))
         params:set("seed_clamp_min", tonumber(io.read()))
         params:set("seed_clamp_max", tonumber(io.read()))
