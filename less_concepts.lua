@@ -245,10 +245,10 @@ end
 
 local function notes_off(n)
   for i=1,#voice[n].active_notes do
-    if params:get("voice_"..i.."_midi_A") == 2 then
+    if params:get("voice_"..n.."_midi_A") == 2 then
       m:note_off(voice[n].active_notes[i],0,params:get("midi_A"))
     end
-    if params:get("voice_"..i.."_midi_B") == 2 then
+    if params:get("voice_"..n.."_midi_B") == 2 then
       m:note_off(voice[n].active_notes[i],0,params:get("midi_B"))
     end
     voice[n].active_notes = {}
