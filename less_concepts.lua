@@ -124,6 +124,7 @@ local ppqn_divisions = ppqn_divisions_variants[1]
 local ppqn_names = ppqn_names_variants[1]
 ppqn_counter = 1
 local sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+local selected_time_param = 1
 
 local cycle_modes = {"*", "-", "<", "~", ">", "<*", "~*", ">*"} -- off, up, down, random
 local cycle_sel = "-"
@@ -512,10 +513,26 @@ function init()
   params:add_separator("timing")
   params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
   params:set_action("time_div_opt", function(x)
-    ppqn_divisions = ppqn_divisions_variants[x]
-    ppqn_names = ppqn_names_variants[x]
-    sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
-    grid_dirty = true
+    --print(preset_count)
+    if preset_count == 0 then
+      --local old_ppqn_div = ppqn_divisions
+      --local old_sel_ppqn_div = {}
+      --for i=1, preset_count do
+      --  old_sel_ppqn_div[i] = new_preset_pool[i].sel_ppqn_div
+      --end
+      selected_time_param = x
+      ppqn_divisions = ppqn_divisions_variants[selected_time_param]
+      ppqn_names = ppqn_names_variants[selected_time_param]
+
+      --for i=1,preset_count do
+      --  new_preset_pool[i].sel_ppqn_div = math.ceil((old_sel_ppqn_div[i] / #old_ppqn_div) * #ppqn_divisions)
+      --  print(new_preset_pool[i].sel_ppqn_div)
+      --end
+      sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+      grid_dirty = true
+    else
+      params:set("time_div_opt", selected_time_param)
+    end
   end)
 
   params:add_separator("midi")
@@ -646,6 +663,7 @@ function init()
   params:add_group("passersby", 31)
   passersby.add_params()
   wsyn_add_params()
+
   bang()
 
   notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,43,45,47,48,50,52,53},
@@ -1468,6 +1486,8 @@ function new_preset_pack(set)
   new_preset_pool[set].v1_octave = voice[1].octave
   new_preset_pool[set].v2_octave = voice[2].octave
   new_preset_pool[set].sel_ppqn_div = sel_ppqn_div
+  --new_preset_pool[set].sel_ppqn_var = ppqn_divisions
+  --new_preset_pool[set].sel_ppqn_nam = ppqn_names
   new_preset_pool[set].p_duration = p_duration
 end
 
@@ -1483,6 +1503,8 @@ function new_preset_unpack(set)
   voice[1].octave = new_preset_pool[set].v1_octave
   voice[2].octave = new_preset_pool[set].v2_octave
   sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
+  --ppqn_divisions = new_preset_pool[set].sel_ppqn_var
+  --ppqn_names = new_preset_pool[set].sel_ppqn_nam
   p_duration = new_preset_pool[set].p_duration
   bang()
   grid_dirty = true
