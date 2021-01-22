@@ -1566,6 +1566,8 @@ function savestate()
   if preset_count == 0 then
     io.write(sel_ppqn_div .. "\n")
   else
+    --print(selected_time_param)
+    io.write(selected_time_param .. "\n")
     for i = 1,preset_count do
       io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
       io.write(new_preset_pool[i].p_duration .. "\n")
@@ -1641,8 +1643,14 @@ function loadstate()
       extended_file = io.read()
       if extended_file == "LCv2.2" then
         if preset_count == 0 then
+          params:set("time_div_opt", tonumber(io.read()))
           sel_ppqn_div = tonumber(io.read())
         else
+          selected_time_param = tonumber(io.read())
+          print(selected_time_param)
+          params:set("time_div_opt", selected_time_param)
+          ppqn_divisions = ppqn_divisions_variants[selected_time_param]
+          ppqn_names = ppqn_names_variants[selected_time_param]
           for i = 1,preset_count do
             new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
             new_preset_pool[i].p_duration = tonumber(io.read())
