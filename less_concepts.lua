@@ -109,7 +109,7 @@ local crow_gate_length = 0.005 --5 ms for 'standard' trig behavior  --clock.get_
 local crow_gate_volts = 5 --5 v (beacuse we don't want to blow any fuses)
 local ppqn = 96
 -- please keep ppqn_divisions and ppqn_names same length and odd numbered lengths
--- thank you @Zifor for clearing out the meanting of t
+-- thank you @Zifor for clearing out the meaning of t
 local ppqn_divisions_variants = {
   {2/1, 3/1, 4/1, 6/1, 8/1},
   {1/4, 1/3, 1/2, 1/1.5, 1/1, 1.5/1, 2/1, 3/1, 4/1},
@@ -348,10 +348,10 @@ local function iterate()
             crow.output[4].execute()
           end
           if params:get("voice_"..i.."_JF") == 2 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,8)
+            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
           end
           if params:get("voice_"..i.."_w") == 2 then
-            crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 8 .. ")")
+            crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
           end
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
       end
@@ -393,6 +393,7 @@ function wsyn_add_params()
     id = "wsyn_ar_mode",
     name = "AR mode",
     options = {"off", "on"},
+    default = 2,
     action = function(val) crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") end
   }
   params:add {
@@ -479,6 +480,7 @@ end
 -- everything that happens when the script is first loaded
 function init()
   -- sets initial state
+  crow.send("ii.wsyn.ar_mode(1)")
   voice[1].bit = 1
   voice[2].bit = 8
   seed = 36
@@ -508,10 +510,10 @@ function init()
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   m = midi.connect(1)
 
-  params:add_group("timing, midi & outputs", 23)
+  params:add_group("time, midi & outputs", 22)
 
-  params:add_separator("timing")
-  params:add_option("time_div_opt", "clock div", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
+  params:add_separator("time (locked with presets)")
+  params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
   params:set_action("time_div_opt", function(x)
     --print(preset_count)
     if preset_count == 0 then
@@ -540,14 +542,14 @@ function init()
   params:set_action("midi_device", function (x) m = midi.connect(x) end)
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
-  params:add_option("jfmode", "JF mode", {"off", "on"}, 1)
-  params:set_action("jfmode", function(x)
-    if x == 2 then
-      crow.ii.jf.mode(1)
-    else
-      crow.ii.jf.mode(0)
-    end
-  end)
+  --params:add_option("jfmode", "JF", {"off", "on"}, 1)
+  --params:set_action("jfmode", function(x)
+  --  if x == 2 then
+  --    crow.ii.jf.mode(1)
+  --  else
+  --    crow.ii.jf.mode(0)
+  --  end
+  --end)
   
   params:add_separator("voice 1 outputs")
   params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
@@ -561,8 +563,22 @@ function init()
   params:set_action("voice_1_crow_2", function (x)
     crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
   end)
-  params:add_option("voice_1_JF", "vox 1 -> ii JF", {"no", "yes"}, 1)
+  params:add_option("voice_1_JF", "vox 1 -> JF", {"no", "yes"}, 1)
+  params:set_action("voice_1_JF", function(x)
+    if params:get("voice_2_JF") == 1 then
+      if x == 2 then
+        crow.ii.jf.mode(1)
+        --params:set("jfmode", 2)
+      else
+        crow.ii.jf.mode(0)
+        --params:set("jfmode", 1)
+      end
+    end
+  end)
   params:add_option("voice_1_w", "vox 1 -> w/syn", {"no", "yes"}, 1)
+  --params:set_action("voice_1_w", function(x)
+  --  params:set("wsyn_ar_mode", x)
+  --end)
   params:add_separator("voice 2 outputs")
   params:add_option("voice_2_engine", "vox 2 -> engine", {"no", "yes"}, 2)
   params:add_option("voice_2_midi_A", "vox 2 -> midi ch A", {"no", "yes"}, 2)
@@ -575,8 +591,22 @@ function init()
   params:set_action("voice_2_crow_2", function (x)
     crow.output[4].action = "{to(".. crow_gate_volts ..",0),to(0,".. crow_gate_length .. ")}" 
   end)
-  params:add_option("voice_2_JF", "vox 2 -> ii JF", {"no", "yes"}, 1)
+  params:add_option("voice_2_JF", "vox 2 -> JF", {"no", "yes"}, 1)
+  params:set_action("voice_2_JF", function(x)
+    if params:get("voice_1_JF") == 1 then
+      if x == 2 then
+        crow.ii.jf.mode(1)
+        --params:set("jfmode", 2)
+      else
+        crow.ii.jf.mode(0)
+        --params:set("jfmode", 1)
+      end
+    end
+  end)
   params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
+  --params:set_action("voice_2_w", function(x)
+  --  params:set("wsyn_ar_mode", x)
+  --end)
   
   params:add_group("scaling & randomization",19)
   params:add_option("scale", "scale", names, 8)
@@ -961,7 +991,7 @@ function redraw()
     screen.text("low: "..lo_string.." // high: "..hi_string)
     screen.move(48,32)
     screen.level(edit == "clock" and 15 or 2)
-    screen.text("sync: "..ppqn_string)
+    screen.text("time: "..ppqn_string)
     
     screen.level(edit == "lc_gate_probs" and 15 or 2)
     screen.move(3,41)
