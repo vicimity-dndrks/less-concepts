@@ -134,6 +134,7 @@ local gridnote = 0
 local screennote = 0
 local gridplay_active = false
 local ignorenote = nil
+local display_voice = {false, false}
 
 engine.name = "Passersby"
 passersby = include "passersby/lib/passersby_engine"
@@ -315,14 +316,13 @@ local function iterate()
     bang()
     
     for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
-      if voice[i].bit == 0 then
-        
-      end
+      display_voice[i] = false
       if seed_as_binary[voice[i].bit] == 1 then
         random_gate[i].comparator = math.random(0,100)
         if random_gate[i].comparator < random_gate[i].probability then
           scale(new_low,new_high,seed)
           random_note[i].comparator = math.random(0,100)
+          display_voice[i] = true
           if random_note[i].comparator < random_note[i].probability then
             random_note[i].add = random_note[i].tran
           else
@@ -500,6 +500,9 @@ function init()
       momentary[x][y] = false
     end
   end
+
+  display_voice[1] = false
+  display_voice[2] = false
   
   math.randomseed(os.time())
   math.random(); math.random(); math.random()
@@ -1338,10 +1341,11 @@ function grid_redraw()
   --leds for voices
   g:led(9-voice[1].bit,1,4)
   g:led(9-voice[2].bit,2,4)
-  if seed_as_binary[voice[1].bit] == 1 then
+  --print(display_voice[1])
+  if seed_as_binary[voice[1].bit] == 1 and display_voice[1] then
     g:led(9-voice[1].bit,1,15)
   end
-  if seed_as_binary[voice[2].bit] == 1 then
+  if seed_as_binary[voice[2].bit] == 1 and display_voice[2] then
     g:led(9-voice[2].bit,2,15)
   end
 
