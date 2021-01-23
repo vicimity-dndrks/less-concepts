@@ -229,7 +229,7 @@ function refrain.enc(n,d)
   if n == 2 or n == 3 then
     if refrain.edit == "engine_refrain" then
       if n == 2 then
-        params:set("engine_input", util.clamp(params:get("engine_input") + d/2, 0, 3))
+        params:set("engine_input", util.clamp(params:get("engine_input") + d/10, 0, 3))
       else
         params:set("engine_input", util.clamp(params:get("engine_input") + d/100, 0, 3))
       end

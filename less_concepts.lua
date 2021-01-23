@@ -313,23 +313,23 @@ local function iterate()
     for i = 1,2 do notes_off(i) end
     seed = next_seed
     bang()
-    scale(new_low,new_high,seed)
     
     for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
       if voice[i].bit == 0 then
-        gridnote = nil
-      else
-        gridnote = scaled
+        
       end
       if seed_as_binary[voice[i].bit] == 1 then
         random_gate[i].comparator = math.random(0,100)
         if random_gate[i].comparator < random_gate[i].probability then
+          scale(new_low,new_high,seed)
           random_note[i].comparator = math.random(0,100)
           if random_note[i].comparator < random_note[i].probability then
             random_note[i].add = random_note[i].tran
           else
             random_note[i].add = 0
           end
+          screennote = notes[coll][scaled] + random_note[i].add
+          gridnote = scaled --DAN: what dto do here? random offset will put gridnote out of bounds
           if params:get("voice_"..i.."_engine") == 2 then
             engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
           end
@@ -354,7 +354,10 @@ local function iterate()
             crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
           end
         table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
-      end
+        else
+          gridnote = nil
+          screennote = nil
+        end
     end
 
     -- EVENTS FOR R E F R A I N
@@ -1032,13 +1035,12 @@ function redraw()
     screen.font_size(24)
     screen.move(4, 32)
     screen.level(1)
-    screennote = notes[coll][scaled]
-    if gridplay_active then
-      screen.text(MusicUtil.note_num_to_name(screennote))
-      screen.move(5, 30)
-      screen.level(8)
-      screen.text(MusicUtil.note_num_to_name(screennote))
-    elseif (v1_b == 0 and v2_b == 0) or screennote == nil then
+    --if gridplay_active then
+    --  screen.text(MusicUtil.note_num_to_name(screennote))
+    --  screen.move(5, 30)
+    --  screen.level(8)
+    --  screen.text(MusicUtil.note_num_to_name(screennote))
+    if (v1_b == 0 and v2_b == 0) or screennote == nil then
       screen.text("-")
       screen.move(5, 30)
       screen.level(8)
