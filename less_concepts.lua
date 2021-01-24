@@ -146,6 +146,22 @@ local options = {}
 
 local destructive = false
 local preset_key_is_held = false
+local transport_run = true
+
+function clock.transport.start()
+  p_duration_counter = 1
+  ppqn_counter = 1
+  transport_run = true
+  --print("START")
+end
+
+function clock.transport.stop()
+  for i=1,2 do
+    notes_off(i)
+  end
+  --print("STOP")
+  transport_run = false
+end
 
 -- this section is all maths + computational events
 
@@ -245,7 +261,7 @@ local function bang()
   next_seed = out1+out2+out3+out4+out5+out6+out7+out8
 end
 
-local function notes_off(n)
+function notes_off(n)
   for i=1,#voice[n].active_notes do
     if params:get("voice_"..n.."_midi_A") == 2 then
       m:note_off(voice[n].active_notes[i],0,params:get("midi_A"))
@@ -260,116 +276,118 @@ end
 -- if user-defined bit in the binary version of a seed equals 1, then note event [aka, bit-wise gating]
 
 local function iterate()
-  if preset_count == 0 then 
-    p_duration = 4 
-    if edit == "cycle" then edit = "seed/rule" end
-  end
-  p_duration_counter = p_duration_counter + 1
-  if ppqn_counter > ppqn / ppqn_divisions[sel_ppqn_div] then
-    ppqn_counter = 1
-
-    if string.find(cycle_sel, "*") then
-      destructive = true
-    else
-      destructive = false
+  if transport_run then
+    if preset_count == 0 then 
+      p_duration = 4 
+      if edit == "cycle" then edit = "seed/rule" end
     end
+    p_duration_counter = p_duration_counter + 1
+    if ppqn_counter > ppqn / ppqn_divisions[sel_ppqn_div] then
+      ppqn_counter = 1
 
-    if destructive then
-      new_preset_pack(selected_preset)
-    end
-    if preset_key_is_held then
-      --local tmp_edit = edit
-    elseif p_duration_counter > ppqn*p_duration and preset_key_is_held == false then
-      p_duration_counter = 1
-      if cycle_sel ~= "-" and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
-        if string.find(cycle_sel, ">") then --cycle up
-          selected_preset = selected_preset + 1
-          if selected_preset > preset_count then
-            selected_preset = 1
-          end
-        elseif string.find(cycle_sel, "<") then --cycle down
-            selected_preset = selected_preset - 1
-          if selected_preset <= 0 then
-            selected_preset = preset_count
-          end
-        elseif string.find(cycle_sel, "~") then --cycle random
-          selected_preset = math.random(1, preset_count)
-        end
-        new_preset_unpack(selected_preset)
+      if string.find(cycle_sel, "*") then
+        destructive = true
+      else
+        destructive = false
       end
-    end
 
-    for y=4,5 do
-      for x=1,16 do
-        if momentary[x][y] then
-          if x > 16 then
-            ignorenote = 16 + x
+      if destructive then
+        new_preset_pack(selected_preset)
+      end
+      if preset_key_is_held then
+        --local tmp_edit = edit
+      elseif p_duration_counter > ppqn*p_duration and preset_key_is_held == false then
+        p_duration_counter = 1
+        if cycle_sel ~= "-" and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
+          if string.find(cycle_sel, ">") then --cycle up
+            selected_preset = selected_preset + 1
+            if selected_preset > preset_count then
+              selected_preset = 1
+            end
+          elseif string.find(cycle_sel, "<") then --cycle down
+              selected_preset = selected_preset - 1
+            if selected_preset <= 0 then
+              selected_preset = preset_count
+            end
+          elseif string.find(cycle_sel, "~") then --cycle random
+            selected_preset = math.random(1, preset_count)
+          end
+          new_preset_unpack(selected_preset)
+        end
+      end
+
+      for y=4,5 do
+        for x=1,16 do
+          if momentary[x][y] then
+            if x > 16 then
+              ignorenote = 16 + x
+            else
+              ignorenote = x
+            end
+          end
+        end
+      end
+
+      for i = 1,2 do notes_off(i) end
+      seed = next_seed
+      bang()
+      
+      for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
+        display_voice[i] = false
+        if seed_as_binary[voice[i].bit] == 1 then
+          random_gate[i].comparator = math.random(0,100)
+          if random_gate[i].comparator < random_gate[i].probability then
+            scale(new_low,new_high,seed)
+            random_note[i].comparator = math.random(0,100)
+            display_voice[i] = true
+            if random_note[i].comparator < random_note[i].probability then
+              random_note[i].add = random_note[i].tran
+            else
+              random_note[i].add = 0
+            end
+            screennote = notes[coll][scaled] + random_note[i].add
+            gridnote = scaled --DAN: what dto do here? random offset will put gridnote out of bounds
+            if params:get("voice_"..i.."_engine") == 2 then
+              engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
+            end
+            if params:get("voice_"..i.."_midi_A") == 2 then
+              m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_A"))
+            end
+            if params:get("voice_"..i.."_midi_B") == 2 then
+              m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_B"))
+            end
+            if params:get("voice_"..i.."_crow_1") == 2 then
+              crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[2].execute()
+            end
+            if params:get("voice_"..i.."_crow_2") == 2 then
+              crow.output[3].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+              crow.output[4].execute()
+            end
+            if params:get("voice_"..i.."_JF") == 2 then
+              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+            end
+            if params:get("voice_"..i.."_w") == 2 then
+              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
+            end
+          table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
           else
-            ignorenote = x
+            gridnote = nil
+            screennote = nil
           end
+      end
+
+      -- EVENTS FOR R E F R A I N
+      if seed_as_binary[track[i].bit] == 1 then
+        random_gate[i+2].comparator = math.random(0,100)
+        if random_gate[i+2].comparator < random_gate[i+2].probability then
+          refrain.reset(i,pass_to_refrain)
         end
       end
     end
-
-    for i = 1,2 do notes_off(i) end
-    seed = next_seed
-    bang()
-    
-    for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
-      display_voice[i] = false
-      if seed_as_binary[voice[i].bit] == 1 then
-        random_gate[i].comparator = math.random(0,100)
-        if random_gate[i].comparator < random_gate[i].probability then
-          scale(new_low,new_high,seed)
-          random_note[i].comparator = math.random(0,100)
-          display_voice[i] = true
-          if random_note[i].comparator < random_note[i].probability then
-            random_note[i].add = random_note[i].tran
-          else
-            random_note[i].add = 0
-          end
-          screennote = notes[coll][scaled] + random_note[i].add
-          gridnote = scaled --DAN: what dto do here? random offset will put gridnote out of bounds
-          if params:get("voice_"..i.."_engine") == 2 then
-            engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
-          end
-          if params:get("voice_"..i.."_midi_A") == 2 then
-            m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_A"))
-          end
-          if params:get("voice_"..i.."_midi_B") == 2 then
-            m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_B"))
-          end
-          if params:get("voice_"..i.."_crow_1") == 2 then
-            crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[2].execute()
-          end
-          if params:get("voice_"..i.."_crow_2") == 2 then
-            crow.output[3].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-            crow.output[4].execute()
-          end
-          if params:get("voice_"..i.."_JF") == 2 then
-            crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
-          end
-          if params:get("voice_"..i.."_w") == 2 then
-            crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[1].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
-          end
-        table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
-        else
-          gridnote = nil
-          screennote = nil
-        end
+    redraw()
+    grid_dirty = true
     end
-
-    -- EVENTS FOR R E F R A I N
-    if seed_as_binary[track[i].bit] == 1 then
-      random_gate[i+2].comparator = math.random(0,100)
-      if random_gate[i+2].comparator < random_gate[i+2].probability then
-        refrain.reset(i,pass_to_refrain)
-      end
-    end
-  end
-  redraw()
-  grid_dirty = true
   end
 end
 
