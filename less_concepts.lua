@@ -47,7 +47,7 @@ local coll = 1
 local new_seed = seed
 local new_rule = rule
 local screen_focus = 1
-local selected_preset = 1
+local selected_preset = 0
 local KEY2 = false
 local KEY3 = false
 local voice = {}
@@ -125,6 +125,9 @@ local ppqn_names = ppqn_names_variants[1]
 ppqn_counter = 1
 local sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
 local selected_time_param = 1
+
+time_clamp_min = 1
+time_clamp_max = #ppqn_divisions
 
 local cycle_modes = {"*", "-", "<", "~", ">", "<*", "~*", ">*"} -- off, up, down, random
 local cycle_sel = "-"
@@ -278,7 +281,7 @@ end
 local function iterate()
   if transport_run then
     if preset_count == 0 then 
-      p_duration = 4 
+      p_duration = params:get("p_duration")
       if edit == "cycle" then edit = "seed/rule" end
     end
     p_duration_counter = p_duration_counter + 1
@@ -510,6 +513,7 @@ function init()
   new_rule = rule
 
   press_counter = {}
+
   momentary = {}
 
   for x = 1,16 do
@@ -534,7 +538,7 @@ function init()
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   m = midi.connect(1)
 
-  params:add_group("time, midi & outputs", 22)
+  params:add_group("time, midi & outputs", 23)
 
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
@@ -555,14 +559,17 @@ function init()
       --  print(new_preset_pool[i].sel_ppqn_div)
       --end
       sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+
       grid_dirty = true
     else
       params:set("time_div_opt", selected_time_param)
     end
   end)
+  params:add_number("p_duration", "default length (cycle): ", 1, 32, 4)
+  p_duration = params:get("p_duration")
 
   params:add_separator("midi")
-  params:add_number("midi_device", "midi device", 1,4,1)
+  params:add_number("midi_device", "midi device", 1, #midi.vports, 1)
   params:set_action("midi_device", function (x) m = midi.connect(x) end)
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
@@ -710,6 +717,20 @@ function init()
       params:set("oct_clamp_max", params:get("oct_clamp_min") + 1)
     end  
   end)
+  --FIX
+  --[[
+  params:add_option("time_clamp_min", "time min", ppqn_names, 1)
+  params:add_option("time_clamp_max", "time max", ppqn_names, #ppqn_names)
+  params:set_action("time_clamp_min", function(x) 
+    if x >= params:get("time_clamp_max") then
+      params:set("time_clamp_min", params:get("time_clamp_max") - 1)
+    end  
+  end)
+  params:set_action("time_clamp_max", function(x) 
+    if x <= params:get("time_clamp_min") then
+      params:set("time_clamp_max", params:get("time_clamp_min") + 1)
+    end  
+  end)]]
 
   params:add_group("~ r e f r a i n", 15)
   refrain.init()
@@ -1079,7 +1100,9 @@ function redraw()
     screen.move(48,60)
     screen.text(cycle_sel)
     screen.move(60,60)
-    screen.text("p"..selected_preset.." duration: x".. p_dur_string)
+    if selected_preset > 0 and preset_count > 0 then
+      screen.text("p"..selected_preset.." length: x".. p_dur_string)
+    end
 
     screen.update()
   elseif screen_focus%2==0 then
@@ -1127,6 +1150,7 @@ function long_press(x)
       cycle_sel = "*"
     end
   end
+  if selected_preset == 0 then selected_preset = 1 end
   press_counter[x] = nil
 end
 
@@ -1280,9 +1304,11 @@ g.key = function(x,y,z)
     elseif x == 11 then
       voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
     elseif x == 13 then
-      sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
+      --sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
+      sel_ppqn_div = math.random(1, #ppqn_divisions)
     elseif x == 14 then
-      sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
+      --sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
+      sel_ppqn_div = math.random(1, #ppqn_divisions)
       randomize_all()
     elseif x == 16 then
       randomize_all()
@@ -1312,17 +1338,18 @@ g.key = function(x,y,z)
     grid_dirty = true
   end
 
-  --key for removing presets
-  if y == 6 and z == 1 then
-    if x == 14 and preset_count > 0 then
-        preset_remove(selected_preset)
-      elseif x == 15 then
-        preset_count = 0
-        cycle_sel = "-"
-        selected_preset = 1
+  --key for removing and adding presets
+  if y == 6 then
+    if x == 15 and preset_count > 0 and z == 1 then --flip the removes (check)
+        press_counter[x] = clock.run(remove_wait, x)
+      elseif x == 14 and z == 1 then
+        press_counter[x] = clock.run(remove_wait, x)
+      elseif x == 16 and z == 1 and preset_count < 16 then
       elseif x == 16 and preset_count < 16 then
         preset_count = preset_count + 1
         new_preset_pack(preset_count)
+      elseif z == 0 then
+        clock.cancel(press_counter[x])
       end
   elseif (y == 7 or y == 8) and z == 0 then
     if x > 8 and x < 17 and x < preset_count+9 then
@@ -1334,10 +1361,21 @@ g.key = function(x,y,z)
   grid_dirty = true
 end
 
+function remove_wait(x)
+  clock.sleep(0.5)
+  if x == 15 then
+    preset_remove(selected_preset)
+  elseif x == 14 then
+    preset_count = 0
+    cycle_sel = "-"
+    selected_preset = 1
+  end
+end
+
 -- hardware: grid redraw
 function grid_redraw_clock()
   while true do
-    clock.sleep(1/30)
+    clock.sleep(1/15)
     if grid_dirty then
       grid_redraw()
       grid_dirty = false
@@ -1388,11 +1426,11 @@ function grid_redraw()
   end
 
   --light up saved presets
-  if preset_count <= 8 then
+  if preset_count > 0 and preset_count <= 8 then
     for i=1,preset_count do
       g:led(i+8,7,6)
     end
-  else
+  elseif preset_count > 0 and preset_count <= 16 then
     for i=1,8 do
       g:led(i+8,7,6)
     end
@@ -1402,7 +1440,7 @@ function grid_redraw()
   end
   
   --light up active preset
-  if preset_count > 0 then
+  if preset_count > 0 and selected_preset > 0 then
     if selected_preset <= 8 then
       g:led(selected_preset+8,7,15)
     else
@@ -1542,7 +1580,7 @@ function new_preset_pack(set)
   new_preset_pool[set].sel_ppqn_div = sel_ppqn_div
   --new_preset_pool[set].sel_ppqn_var = ppqn_divisions
   --new_preset_pool[set].sel_ppqn_nam = ppqn_names
-  new_preset_pool[set].p_duration = p_duration
+  new_preset_pool[set].p_duration = params:get("p_duration")
 end
 
 function new_preset_unpack(set)
@@ -1565,7 +1603,7 @@ function new_preset_unpack(set)
 end
 
 function preset_remove(set)
-  if set ~= 0 then
+  if set > 0 then
     for i = set,16 do
       new_preset_pool[i].seed = new_preset_pool[i+1].seed
       new_preset_pool[i].rule = new_preset_pool[i+1].rule
@@ -1578,12 +1616,12 @@ function preset_remove(set)
       new_preset_pool[i].sel_ppqn_div = new_preset_pool[i+1].sel_ppqn_div
       new_preset_pool[i].p_duration = new_preset_pool[i+1].p_duration
     end
-    if selected_preset > 1 and selected_preset < preset_count then
-      selected_preset = selected_preset
+    if selected_preset > 0 and selected_preset <= preset_count then
+      selected_preset = 0--selected_preset
     elseif selected_preset == preset_count then
-      selected_preset = selected_preset - 1
+      selected_preset = util.clamp(selected_preset - 1, 1, 16)
     end
-    preset_count = preset_count - 1
+    preset_count = util.clamp(preset_count - 1, 0, 16)
     redraw()
   end
 end
