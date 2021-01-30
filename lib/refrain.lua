@@ -3,6 +3,7 @@ local refrain = {}
 math.randomseed(os.time())      -- Seeds the pseudo-random number generator
 
 function refrain.init()
+
   print("r e f r a i n")
   track = {}
   state = {"rec", "rec"}
@@ -20,9 +21,12 @@ function refrain.init()
     --"ref_presets"}
   refrain.edit = "engine_refrain"
   refrain.dd = 0
+  sc_pos = {}
   
-  params:add_control("engine_input", "engine -> ~ r e f r a i n", controlspec.new(0, 3, "lin", 0, 0, ""))
+  params:add_control("engine_input", "engine -> ~ r e f r a i n", controlspec.new(0, 1.2, "lin", 0, 0, ""))
   params:set_action("engine_input", function(x) audio.level_eng_cut(x) end)
+  params:add_control("input_input", "input -> ~ r e f r a i n", controlspec.new(0, 1.2, "lin", 0, 0, ""))
+  params:set_action("input_input", function(x) audio.level_adc_cut(x) end)
   params:add_option("note -> param", "note -> param", refrain.scaled, 1)
   params:set_action("note -> param", function(x) note_to_param = refrain.scaled[x] end)
   params:add_separator()
@@ -31,8 +35,8 @@ function refrain.init()
   audio.level_cut(1)
   audio.level_adc_cut(1)
   audio.level_eng_cut(0)
-  softcut.pan(1, 0.7)
-  softcut.pan(2, 0.3)
+  softcut.pan(1, -0.7)
+  softcut.pan(2, 0.7)
   
   for i = 1, 2 do
     track[i] = {}
@@ -64,8 +68,22 @@ function refrain.init()
     softcut.filter_lp(i, 0)
     softcut.filter_bp(i, 1.0)
     softcut.filter_rq(i, 2.0)
+
+    softcut.phase_quant(i,0.07)
+    softcut.event_phase(update_positions)
+    softcut.poll_start_phase()
   end
   
+  add_params()
+  
+  track[1].pan = -0.7
+  track[2].pan = 0.7
+  
+  params:bang()
+
+end
+
+function add_params()
   for i = 1,2 do
     params:add_control(i .. "feedback", i .. " feedback", controlspec.new(0, 1, "lin", 0, .2, ""))
     params:set_action(i .. "feedback", function(x)
@@ -84,12 +102,15 @@ function refrain.init()
     params:add_control(i .. "volume", i .. " volume", controlspec.new(0,3,"lin",0,1,""))
     params:set_action(i .. "volume", function(x) softcut.level(i,x)end)
   end
-  
-  track[1].pan = -0.7
-  track[2].pan = 0.7
-  
-  params:bang()
+end
 
+function update_positions(voice,position)
+  sc_pos[voice] = (position - 1) / (track[voice].end_point - 1)
+  --print(sc_pos[voice], track[voice].start_point, track[voice].end_point)
+  --print(track[voice].position())
+  if screen_focus == 2 then 
+    refrain.redraw()
+  end
 end
 
 function refrain.reset(voice,passed)
@@ -145,12 +166,33 @@ function refrain.redraw()
   screen.line_rel(4,0)
   screen.stroke()
 
+
+  screen.level(1)
+  screen.move(78-1, 4+2)
+  screen.line_width(2)
+  screen.line_rel(42,0)
+  screen.move(80 + sc_pos[1]*(36)-1,1+2)
+  screen.line_rel(0,3)
+  screen.move(80 + sc_pos[2]*(36)-1,7+2)
+  screen.line_rel(0,-3)
+  screen.stroke()
+  screen.level(8)
+  screen.move(78, 4)
+  screen.line_width(2)
+  screen.line_rel(42,0)
+  screen.move(80 + sc_pos[1]*(36),1)
+  screen.line_rel(0,3)
+  screen.move(80 + sc_pos[2]*(36),7)
+  screen.line_rel(0,-3)
+  screen.stroke()
+
   screen.font_face(1)
   screen.font_size(8)
 
-  screen.move(84,60)
+  screen.move(95,60)
   screen.level(refrain.edit=="ref_rec" and 15 or 2)
-  screen.text(state[1].." | "..state[2])
+  screen.text_right(state[1])
+  screen.text(" | "..state[2])
 
   screen.move(5, 60)
   screen.level(2)
@@ -158,7 +200,7 @@ function refrain.redraw()
 
   screen.move(0,16)
   screen.level(refrain.edit=="engine_refrain" and 15 or 2)
-  screen.text("eng -> ~ ref: " .. params:get("engine_input"))
+  screen.text("mix eng: " .. params:get("engine_input") .. " // adc: " .. params:get("input_input"))
   
   screen.move(0,24)
   screen.level(refrain.edit=="ref_feedback" and 15 or 2)
@@ -217,6 +259,15 @@ function refrain.key(n,z)
   else
     if n == 3 and z == 1 then
       refrain.randomize()
+    elseif n == 2 and z == 1 then
+      for i=1,2 do
+        if state[i]~="rec" then
+          refrain.rec(i)
+        elseif state[i]=="rec" then
+          refrain.play(i)
+        end
+      end
+      refrain.redraw()
     end
   end
 end
@@ -229,9 +280,9 @@ function refrain.enc(n,d)
   if n == 2 or n == 3 then
     if refrain.edit == "engine_refrain" then
       if n == 2 then
-        params:set("engine_input", util.clamp(params:get("engine_input") + d/10, 0, 3))
+        params:set("engine_input", util.clamp(params:get("engine_input") + d/10, 0, 1.2))
       else
-        params:set("engine_input", util.clamp(params:get("engine_input") + d/100, 0, 3))
+        params:set("input_input", util.clamp(params:get("input_input") + d/10, 0, 1.2))
       end
     elseif refrain.edit == "ref_feedback" then
       params:set((n-1).."feedback", util.clamp(params:get((n-1).."feedback")+d/100,0,1))
@@ -273,6 +324,70 @@ function refrain.randomize()
     for i = 1,2 do
       track[i].bit = math.random(1,8)
     end
+  end
+end
+
+function ref_savestate()
+  io.write("refrain".."\n")
+  for i=1,2 do
+    io.write(track[i].offset .. "\n")
+    --print(track[i].offset )
+    io.write(speedlist[track[i].rate] .. "\n")
+    io.write(track[i].bit .. "\n")
+    io.write(track[i].pan .. "\n")
+  end
+end
+
+function ref_loadstate()
+  refrain_file = io.read()
+  --refrain_file)
+  if refrain_file == "refrain" then  
+    for i=1,2 do
+      track[i].offset = tonumber(io.read())
+      --print(track[i].offset )
+      local temp_rate = tonumber(io.read())
+      track[i].rate = temp_rate
+      speedlist[track[i].rate] = temp_rate
+      softcut.rate(i, temp_rate)
+      track[i].bit = tonumber(io.read())
+      local temp_pan = tonumber(io.read())
+      track[i].pan = temp_pan
+      softcut.pan(i, temp_pan)
+
+      track[i].start_point = 1
+      track[i].end_point = 9
+
+      audio.level_eng_cut(1)
+      softcut.level_input_cut(1, i, 1.0)
+      softcut.level_input_cut(2, i, 1.0)
+      softcut.buffer(1,1)
+      softcut.buffer(2,2)
+
+      softcut.play(i, 1)
+      softcut.rate(i, 1)
+      softcut.loop_start(i, 1)
+      softcut.loop_end(i, 9)
+      softcut.loop(i, 1)
+      softcut.fade_time(i, 0.2)
+      softcut.rec(i, 1)
+      softcut.rec_level(i, 1)
+      softcut.position(i, 1)
+      softcut.rec_offset(i, -0.0003)
+      softcut.enable(i, 1)
+      softcut.filter_dry(i, 0.125)
+      softcut.filter_fc(i, 1200)
+      softcut.filter_lp(i, 0)
+      softcut.filter_bp(i, 1.0)
+      softcut.filter_rq(i, 2.0)
+
+      softcut.phase_quant(i,0.07)
+      softcut.event_phase(update_positions)
+      softcut.poll_start_phase()
+
+      add_params()
+    end
+  else
+    print("invalid data file (refrain)")
   end
 end
 

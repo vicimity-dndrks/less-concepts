@@ -280,6 +280,7 @@ end
 
 local function iterate()
   if transport_run then
+    --print("HELO"..preset_count)
     if preset_count == 0 then 
       p_duration = params:get("p_duration")
       if edit == "cycle" then edit = "seed/rule" end
@@ -732,7 +733,7 @@ function init()
     end  
   end)]]
 
-  params:add_group("~ r e f r a i n", 15)
+  params:add_group("~ r e f r a i n", 16)
   refrain.init()
   
   params:add_group("passersby", 31)
@@ -1488,6 +1489,7 @@ function grid_redraw()
   --leds for time div buttons
   --thank you @Quixotic7
   local off_temp = util.round(15 / #ppqn_divisions) --creates offset for led_low_temp
+--lua: /home/we/norns/lua/core/clock.lua:82: /home/we/dust/code/less_concepts/less_concepts.lua:1491: attempt to perform arithmetic on a nil value (upvalue 'sel_ppqn_div')
   local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
   local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
   g:led(1, 8, led_low_temp)
@@ -1634,15 +1636,27 @@ function savestate()
   io.output(file)
   io.write("permanence".."\n")
   io.write(preset_count.."\n")
-  for i = 1,preset_count do
-    io.write(new_preset_pool[i].seed .. "\n")
-    io.write(new_preset_pool[i].rule .. "\n")
-    io.write(new_preset_pool[i].v1_bit .. "\n")
-    io.write(new_preset_pool[i].v2_bit .. "\n")
-    io.write(new_preset_pool[i].new_low .. "\n")
-    io.write(new_preset_pool[i].new_high .. "\n")
-    io.write(new_preset_pool[i].v1_octave .. "\n")
-    io.write(new_preset_pool[i].v2_octave .. "\n")
+  if preset_count > 0 then
+    for i = 1,preset_count do
+      io.write(new_preset_pool[i].seed .. "\n")
+      io.write(new_preset_pool[i].rule .. "\n")
+      io.write(new_preset_pool[i].v1_bit .. "\n")
+      io.write(new_preset_pool[i].v2_bit .. "\n")
+      io.write(new_preset_pool[i].new_low .. "\n")
+      io.write(new_preset_pool[i].new_high .. "\n")
+      io.write(new_preset_pool[i].v1_octave .. "\n")
+      io.write(new_preset_pool[i].v2_octave .. "\n")
+    end
+  else
+    print("HERE" .. new_seed)
+    io.write(new_seed .. "\n")
+    io.write(new_rule .. "\n")
+    io.write(voice[1].bit .. "\n")
+    io.write(voice[2].bit .. "\n")
+    io.write(new_low .. "\n")
+    io.write(new_high .. "\n")
+    io.write(voice[1].octave .. "\n")
+    io.write(voice[2].octave .. "\n")
   end
   io.write(params:get("clock_tempo") .. "\n")
   io.write(params:get("clock_midi_out") .. "\n")
@@ -1655,29 +1669,38 @@ function savestate()
     io.write(params:get("tran prob "..i) .. "\n")
   end
   io.write("LCv2.2\n")
+  io.write(selected_time_param .. "\n")
   if preset_count == 0 then
     io.write(sel_ppqn_div .. "\n")
+    io.write(p_duration .. "\n")
   else
     --print(selected_time_param)
-    io.write(selected_time_param .. "\n")
-    for i = 1,preset_count do
-      io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
-      io.write(new_preset_pool[i].p_duration .. "\n")
+    if preset_count > 0 then
+      for i = 1,preset_count do
+        io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
+        io.write(new_preset_pool[i].p_duration .. "\n")
+      end
+    else
+      io.write(sel_ppqn_div .. "\n")
+      io.write(p_duration .. "\n")
     end
   end
+  io.write(cycle_sel .. "\n")
+  ref_savestate()
   --io.write(params:get("output") .. "\n")
-  io.write(params:get("time_div_opt") .. "\n")
-  io.write(params:get("seed_clamp_min") .. "\n")
-  io.write(params:get("seed_clamp_max") .. "\n")
-  io.write(params:get("rule_clamp_min") .. "\n")
-  io.write(params:get("rule_clamp_max") .. "\n")
-  io.write(params:get("lo_clamp_min") .. "\n")
-  io.write(params:get("lo_clamp_max") .. "\n")
-  io.write(params:get("hi_clamp_min") .. "\n")
-  io.write(params:get("hi_clamp_max") .. "\n")
-  io.write(params:get("oct_clamp_min") .. "\n")
-  io.write(params:get("oct_clamp_max") .. "\n")
+  --io.write(params:get("time_div_opt") .. "\n")
+  --io.write(params:get("seed_clamp_min") .. "\n")
+  --io.write(params:get("seed_clamp_max") .. "\n")
+  --io.write(params:get("rule_clamp_min") .. "\n")
+  --io.write(params:get("rule_clamp_max") .. "\n")
+  --io.write(params:get("lo_clamp_min") .. "\n")
+  --io.write(params:get("lo_clamp_max") .. "\n")
+  --io.write(params:get("hi_clamp_min") .. "\n")
+  --io.write(params:get("hi_clamp_max") .. "\n")
+  --io.write(params:get("oct_clamp_min") .. "\n")
+  --io.write(params:get("oct_clamp_max") .. "\n")
   io.close(file)
+  params:write(_path.data .. "less_concepts/less_concepts-0"..selected_set)
 end
 
 function loadstate()
@@ -1692,15 +1715,26 @@ function loadstate()
       else
         selected_preset = 0
       end
-      for i = 1,preset_count do
-        new_preset_pool[i].seed = tonumber(io.read())
-        new_preset_pool[i].rule = tonumber(io.read())
-        new_preset_pool[i].v1_bit = tonumber(io.read())
-        new_preset_pool[i].v2_bit = tonumber(io.read())
-        new_preset_pool[i].new_low = tonumber(io.read())
-        new_preset_pool[i].new_high = tonumber(io.read())
-        new_preset_pool[i].v1_octave = tonumber(io.read())
-        new_preset_pool[i].v2_octave = tonumber(io.read())
+      if preset_count > 0 then
+        for i = 1,preset_count do
+          new_preset_pool[i].seed = tonumber(io.read())
+          new_preset_pool[i].rule = tonumber(io.read())
+          new_preset_pool[i].v1_bit = tonumber(io.read())
+          new_preset_pool[i].v2_bit = tonumber(io.read())
+          new_preset_pool[i].new_low = tonumber(io.read())
+          new_preset_pool[i].new_high = tonumber(io.read())
+          new_preset_pool[i].v1_octave = tonumber(io.read())
+          new_preset_pool[i].v2_octave = tonumber(io.read())
+        end
+      else
+        seed = tonumber(io.read())
+        rule = tonumber(io.read())
+        voice[1].bit = tonumber(io.read())
+        voice[2].bit = tonumber(io.read())
+        new_low = tonumber(io.read())
+        new_high = tonumber(io.read())
+        voice[1].octave = tonumber(io.read())
+        voice[2].octave = tonumber(io.read())
       end
       load_bpm = tonumber(io.read())
       load_clock = tonumber(io.read())
@@ -1734,34 +1768,37 @@ function loadstate()
       end
       extended_file = io.read()
       if extended_file == "LCv2.2" then
+        selected_time_param = tonumber(io.read())
+        ppqn_names = ppqn_names_variants[selected_time_param]
+        ppqn_divisions = ppqn_divisions_variants[selected_time_param]
+        params:set("time_div_opt", selected_time_param)
         if preset_count == 0 then
-          params:set("time_div_opt", tonumber(io.read()))
+          selected_preset = 0
           sel_ppqn_div = tonumber(io.read())
+          p_duration = tonumber(io.read())
         else
-          selected_time_param = tonumber(io.read())
-          print(selected_time_param)
-          params:set("time_div_opt", selected_time_param)
-          ppqn_divisions = ppqn_divisions_variants[selected_time_param]
-          ppqn_names = ppqn_names_variants[selected_time_param]
+          selected_preset = 1
           for i = 1,preset_count do
             new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
             new_preset_pool[i].p_duration = tonumber(io.read())
           end
-          selected_preset = 1
+          
           new_preset_unpack(selected_preset)
         end
+        cycle_sel = tostring(io.read())
+        ref_loadstate()
         --output = tonumber(io.read())
-        params:set("time_div_opt", tonumber(io.read()))
-        params:set("seed_clamp_min", tonumber(io.read()))
-        params:set("seed_clamp_max", tonumber(io.read()))
-        params:set("rule_clamp_min", tonumber(io.read()))
-        params:set("rule_clamp_max", tonumber(io.read()))
-        params:set("lo_clamp_min", tonumber(io.read()))
-        params:set("lo_clamp_max", tonumber(io.read()))
-        params:set("hi_clamp_min", tonumber(io.read()))
-        params:set("hi_clamp_max", tonumber(io.read()))
-        params:set("oct_clamp_min", tonumber(io.read()))
-        params:set("oct_clamp_max", tonumber(io.read()))
+        --params:set("time_div_opt", tonumber(io.read()))
+        --params:set("seed_clamp_min", tonumber(io.read()))
+        --params:set("seed_clamp_max", tonumber(io.read()))
+        --params:set("rule_clamp_min", tonumber(io.read()))
+        --params:set("rule_clamp_max", tonumber(io.read()))
+        --params:set("lo_clamp_min", tonumber(io.read()))
+        --params:set("lo_clamp_max", tonumber(io.read()))
+        --params:set("hi_clamp_min", tonumber(io.read()))
+        --params:set("hi_clamp_max", tonumber(io.read()))
+        --params:set("oct_clamp_min", tonumber(io.read()))
+        --params:set("oct_clamp_max", tonumber(io.read()))
       else
         --tlc for pre 2.2 saves
         sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
@@ -1771,6 +1808,8 @@ function loadstate()
           new_preset_pool[i].p_duration = 4
         end
       end
+    params:read(_path.data .. "less_concepts/less_concepts-0"..selected_set)
+    params:bang()
     else
       print("invalid data file")
     end
