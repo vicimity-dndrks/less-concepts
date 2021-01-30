@@ -27,12 +27,12 @@
 -- (10,1) to (16,2): octaves
 -- (1,3) to (16,3): randomize
 -- (2,5) + (1,4) to (16,5): low
--- (1),5) + (1,4) to (16,5): high
+-- (1,5) + (1,4) to (16,5): high
 -- (16,6): take snapshot
--- (15,6): clear all snapshots
--- (14,6): clear selected
+-- (15,6): clear selected (hold)
+-- (14,6): clear all snapshots (hold)
 -- (9,7) to (16,8): snapshots
--- (1,6) to (3,6): time signatures
+-- (1,6) to (3,6): time +/-
 --
 -- seek.
 -- think.
@@ -105,8 +105,8 @@ for i = 1,17 do
   new_preset_pool[i].sel_ppqn_div = {}
   new_preset_pool[i].p_duration = {}
 end
-local crow_gate_length = 0.005 --5 ms for 'standard' trig behavior  --clock.get_beat_sec() / 2
-local crow_gate_volts = 5 --5 v (beacuse we don't want to blow any fuses)
+local crow_gate_length = 0.005 --5 ms for 'standard' trig behavior
+local crow_gate_volts = 5
 local ppqn = 96
 -- please keep ppqn_divisions and ppqn_names same length and odd numbered lengths
 -- thank you @Zifor for clearing out the meaning of t
@@ -129,7 +129,7 @@ local selected_time_param = 1
 time_clamp_min = 1
 time_clamp_max = #ppqn_divisions
 
-local cycle_modes = {"*", "-", "<", "~", ">", "<*", "~*", ">*"} -- off, up, down, random
+local cycle_modes = {"*", "-", "<", "~", ">", "<*", "~*", ">*"} -- destructive, off, up, down, random
 local cycle_sel = "-"
 local p_duration = 4
 local p_duration_counter = 1
@@ -155,14 +155,12 @@ function clock.transport.start()
   p_duration_counter = 1
   ppqn_counter = 1
   transport_run = true
-  --print("START")
 end
 
 function clock.transport.stop()
   for i=1,2 do
     notes_off(i)
   end
-  --print("STOP")
   transport_run = false
 end
 
@@ -204,7 +202,7 @@ end
 
 -- maths: scale seeds to the note pool + range selected
 local function scale(lo, hi, received)
-  scaled = math.floor(((((received) / (256)) * (hi + 1 - lo) + lo))) -- DAN: I changed this to received / 256 from received -1 & 256 - 1. s: 36 / r: 19 was giving wrong values. I also added (hi + 1) to include upper limit in scaling
+  scaled = math.floor(((((received) / (256)) * (hi + 1 - lo) + lo))) 
   pass_to_refrain = received
 end
 
@@ -280,7 +278,6 @@ end
 
 local function iterate()
   if transport_run then
-    --print("HELO"..preset_count)
     if preset_count == 0 then 
       p_duration = params:get("p_duration")
       if edit == "cycle" then edit = "seed/rule" end
@@ -336,7 +333,7 @@ local function iterate()
       seed = next_seed
       bang()
       
-      for i = 1,2 do --changed midi & engine velocity to 100 / JF and w/syn to 8
+      for i = 1,2 do
         display_voice[i] = false
         if seed_as_binary[voice[i].bit] == 1 then
           random_gate[i].comparator = math.random(0,100)
@@ -350,7 +347,7 @@ local function iterate()
               random_note[i].add = 0
             end
             screennote = notes[coll][scaled] + random_note[i].add
-            gridnote = scaled --DAN: what dto do here? random offset will put gridnote out of bounds
+            gridnote = scaled
             if params:get("voice_"..i.."_engine") == 2 then
               engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
             end
@@ -544,21 +541,10 @@ function init()
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
   params:set_action("time_div_opt", function(x)
-    --print(preset_count)
     if preset_count == 0 then
-      --local old_ppqn_div = ppqn_divisions
-      --local old_sel_ppqn_div = {}
-      --for i=1, preset_count do
-      --  old_sel_ppqn_div[i] = new_preset_pool[i].sel_ppqn_div
-      --end
       selected_time_param = x
       ppqn_divisions = ppqn_divisions_variants[selected_time_param]
       ppqn_names = ppqn_names_variants[selected_time_param]
-
-      --for i=1,preset_count do
-      --  new_preset_pool[i].sel_ppqn_div = math.ceil((old_sel_ppqn_div[i] / #old_ppqn_div) * #ppqn_divisions)
-      --  print(new_preset_pool[i].sel_ppqn_div)
-      --end
       sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
 
       grid_dirty = true
@@ -574,14 +560,6 @@ function init()
   params:set_action("midi_device", function (x) m = midi.connect(x) end)
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
-  --params:add_option("jfmode", "JF", {"off", "on"}, 1)
-  --params:set_action("jfmode", function(x)
-  --  if x == 2 then
-  --    crow.ii.jf.mode(1)
-  --  else
-  --    crow.ii.jf.mode(0)
-  --  end
-  --end)
   
   params:add_separator("voice 1 outputs")
   params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
@@ -600,17 +578,12 @@ function init()
     if params:get("voice_2_JF") == 1 then
       if x == 2 then
         crow.ii.jf.mode(1)
-        --params:set("jfmode", 2)
       else
         crow.ii.jf.mode(0)
-        --params:set("jfmode", 1)
       end
     end
   end)
   params:add_option("voice_1_w", "vox 1 -> w/syn", {"no", "yes"}, 1)
-  --params:set_action("voice_1_w", function(x)
-  --  params:set("wsyn_ar_mode", x)
-  --end)
   params:add_separator("voice 2 outputs")
   params:add_option("voice_2_engine", "vox 2 -> engine", {"no", "yes"}, 2)
   params:add_option("voice_2_midi_A", "vox 2 -> midi ch A", {"no", "yes"}, 2)
@@ -628,17 +601,12 @@ function init()
     if params:get("voice_1_JF") == 1 then
       if x == 2 then
         crow.ii.jf.mode(1)
-        --params:set("jfmode", 2)
       else
         crow.ii.jf.mode(0)
-        --params:set("jfmode", 1)
       end
     end
   end)
   params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
-  --params:set_action("voice_2_w", function(x)
-  --  params:set("wsyn_ar_mode", x)
-  --end)
   
   params:add_group("scaling & randomization",19)
   params:add_option("scale", "scale", names, 8)
@@ -718,20 +686,6 @@ function init()
       params:set("oct_clamp_max", params:get("oct_clamp_min") + 1)
     end  
   end)
-  --FIX
-  --[[
-  params:add_option("time_clamp_min", "time min", ppqn_names, 1)
-  params:add_option("time_clamp_max", "time max", ppqn_names, #ppqn_names)
-  params:set_action("time_clamp_min", function(x) 
-    if x >= params:get("time_clamp_max") then
-      params:set("time_clamp_min", params:get("time_clamp_max") - 1)
-    end  
-  end)
-  params:set_action("time_clamp_max", function(x) 
-    if x <= params:get("time_clamp_min") then
-      params:set("time_clamp_max", params:get("time_clamp_min") + 1)
-    end  
-  end)]]
 
   params:add_group("~ r e f r a i n", 16)
   refrain.init()
@@ -1078,11 +1032,7 @@ function redraw()
     screen.font_size(24)
     screen.move(4, 32)
     screen.level(1)
-    --if gridplay_active then
-    --  screen.text(MusicUtil.note_num_to_name(screennote))
-    --  screen.move(5, 30)
-    --  screen.level(8)
-    --  screen.text(MusicUtil.note_num_to_name(screennote))
+
     if (v1_b == 0 and v2_b == 0) or screennote == nil then
       screen.text("-")
       screen.move(5, 30)
@@ -1305,10 +1255,8 @@ g.key = function(x,y,z)
     elseif x == 11 then
       voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
     elseif x == 13 then
-      --sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
       sel_ppqn_div = math.random(1, #ppqn_divisions)
     elseif x == 14 then
-      --sel_ppqn_div = math.random(params:get("time_clamp_min"), params:get("time_clamp_max"))
       sel_ppqn_div = math.random(1, #ppqn_divisions)
       randomize_all()
     elseif x == 16 then
@@ -1329,10 +1277,8 @@ g.key = function(x,y,z)
         selected_preset = x
         new_preset_unpack(x)
       end
-      --tmp_edit = edit
       if cycle_sel ~= "-" then
         preset_key_is_held = true
-        --edit = "cycle"
         new_preset_unpack(x - 8)
       end
     end
@@ -1341,7 +1287,7 @@ g.key = function(x,y,z)
 
   --key for removing and adding presets
   if y == 6 then
-    if x == 15 and preset_count > 0 and z == 1 then --flip the removes (check)
+    if x == 15 and preset_count > 0 and z == 1 then 
         press_counter[x] = clock.run(remove_wait, x)
       elseif x == 14 and z == 1 then
         press_counter[x] = clock.run(remove_wait, x)
@@ -1354,9 +1300,7 @@ g.key = function(x,y,z)
       end
   elseif (y == 7 or y == 8) and z == 0 then
     if x > 8 and x < 17 and x < preset_count+9 then
-      preset_key_is_held = false
-      --edit = tmp_edit
-      
+      preset_key_is_held = false      
     end
   end
   grid_dirty = true
@@ -1398,7 +1342,6 @@ function grid_redraw()
   --leds for voices
   g:led(9-voice[1].bit,1,4)
   g:led(9-voice[2].bit,2,4)
-  --print(display_voice[1])
   if seed_as_binary[voice[1].bit] == 1 and display_voice[1] then
     g:led(9-voice[1].bit,1,15)
   end
@@ -1489,7 +1432,6 @@ function grid_redraw()
   --leds for time div buttons
   --thank you @Quixotic7
   local off_temp = util.round(15 / #ppqn_divisions) --creates offset for led_low_temp
---lua: /home/we/norns/lua/core/clock.lua:82: /home/we/dust/code/less_concepts/less_concepts.lua:1491: attempt to perform arithmetic on a nil value (upvalue 'sel_ppqn_div')
   local led_low_temp = off_temp + util.round((1-(sel_ppqn_div/#ppqn_divisions))*15) --calculates led brightness
   local led_high_temp = 15 - util.round((1-(sel_ppqn_div/#ppqn_divisions))*15)
   g:led(1, 8, led_low_temp)
@@ -1580,8 +1522,6 @@ function new_preset_pack(set)
   new_preset_pool[set].v1_octave = voice[1].octave
   new_preset_pool[set].v2_octave = voice[2].octave
   new_preset_pool[set].sel_ppqn_div = sel_ppqn_div
-  --new_preset_pool[set].sel_ppqn_var = ppqn_divisions
-  --new_preset_pool[set].sel_ppqn_nam = ppqn_names
   new_preset_pool[set].p_duration = params:get("p_duration")
 end
 
@@ -1597,9 +1537,8 @@ function new_preset_unpack(set)
   voice[1].octave = new_preset_pool[set].v1_octave
   voice[2].octave = new_preset_pool[set].v2_octave
   sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
-  --ppqn_divisions = new_preset_pool[set].sel_ppqn_var
-  --ppqn_names = new_preset_pool[set].sel_ppqn_nam
   p_duration = new_preset_pool[set].p_duration
+  p_duration_counter = 1
   bang()
   grid_dirty = true
 end
@@ -1619,7 +1558,7 @@ function preset_remove(set)
       new_preset_pool[i].p_duration = new_preset_pool[i+1].p_duration
     end
     if selected_preset > 0 and selected_preset <= preset_count then
-      selected_preset = 0--selected_preset
+      selected_preset = 0
     elseif selected_preset == preset_count then
       selected_preset = util.clamp(selected_preset - 1, 1, 16)
     end
@@ -1674,7 +1613,6 @@ function savestate()
     io.write(sel_ppqn_div .. "\n")
     io.write(p_duration .. "\n")
   else
-    --print(selected_time_param)
     if preset_count > 0 then
       for i = 1,preset_count do
         io.write(new_preset_pool[i].sel_ppqn_div .. "\n")
@@ -1687,18 +1625,6 @@ function savestate()
   end
   io.write(cycle_sel .. "\n")
   ref_savestate()
-  --io.write(params:get("output") .. "\n")
-  --io.write(params:get("time_div_opt") .. "\n")
-  --io.write(params:get("seed_clamp_min") .. "\n")
-  --io.write(params:get("seed_clamp_max") .. "\n")
-  --io.write(params:get("rule_clamp_min") .. "\n")
-  --io.write(params:get("rule_clamp_max") .. "\n")
-  --io.write(params:get("lo_clamp_min") .. "\n")
-  --io.write(params:get("lo_clamp_max") .. "\n")
-  --io.write(params:get("hi_clamp_min") .. "\n")
-  --io.write(params:get("hi_clamp_max") .. "\n")
-  --io.write(params:get("oct_clamp_min") .. "\n")
-  --io.write(params:get("oct_clamp_max") .. "\n")
   io.close(file)
   params:write(_path.data .. "less_concepts/less_concepts-0"..selected_set)
 end
@@ -1787,18 +1713,6 @@ function loadstate()
         end
         cycle_sel = tostring(io.read())
         ref_loadstate()
-        --output = tonumber(io.read())
-        --params:set("time_div_opt", tonumber(io.read()))
-        --params:set("seed_clamp_min", tonumber(io.read()))
-        --params:set("seed_clamp_max", tonumber(io.read()))
-        --params:set("rule_clamp_min", tonumber(io.read()))
-        --params:set("rule_clamp_max", tonumber(io.read()))
-        --params:set("lo_clamp_min", tonumber(io.read()))
-        --params:set("lo_clamp_max", tonumber(io.read()))
-        --params:set("hi_clamp_min", tonumber(io.read()))
-        --params:set("hi_clamp_max", tonumber(io.read()))
-        --params:set("oct_clamp_min", tonumber(io.read()))
-        --params:set("oct_clamp_max", tonumber(io.read()))
       else
         --tlc for pre 2.2 saves
         sel_ppqn_div = util.round((1+#ppqn_divisions)/2)

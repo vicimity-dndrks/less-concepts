@@ -200,7 +200,7 @@ function refrain.redraw()
 
   screen.move(0,18)
   screen.level(refrain.edit=="engine_refrain" and 15 or 2)
-  screen.text("input engine: " .. params:get("engine_input") .. " // adc: " .. params:get("input_input"))
+  screen.text("input eng: " .. params:get("engine_input") .. " // adc: " .. params:get("input_input"))
   
   screen.move(0,26)
   screen.level(refrain.edit=="ref_feedback" and 15 or 2)
@@ -214,23 +214,6 @@ function refrain.redraw()
   screen.move(0,50)
   screen.level(refrain.edit=="ref_pan" and 15 or 2)
   screen.text("pan 1: "..string.format("%.2f", track[1].pan).." // 2: "..string.format("%.2f", track[2].pan))
-  --screen.move(0,62)
-  --screen.level(refrain.edit=="ref_bits" and 15 or 2)
-
-
-  --for i = 1,8 do
-  --  screen.text(seed_as_binary[9-i])
-  --  screen.move((5*i),62)
-  --end
-  
-  --[[
-  screen.font_size(10)
-  screen.move(40 - (5*track[1].bit),59)
-  screen.text("-")
-  screen.move(40 - (5*track[2].bit),67)
-  screen.text("-")
-  screen.font_size(8)
-  ]]
 
   screen.update()
 end
@@ -280,9 +263,9 @@ function refrain.enc(n,d)
   if n == 2 or n == 3 then
     if refrain.edit == "engine_refrain" then
       if n == 2 then
-        params:set("engine_input", util.clamp(params:get("engine_input") + d/10, 0, 1.2))
+        params:set("engine_input", util.clamp(params:get("engine_input") + d/100, 0, 1.2))
       else
-        params:set("input_input", util.clamp(params:get("input_input") + d/10, 0, 1.2))
+        params:set("input_input", util.clamp(params:get("input_input") + d/100, 0, 1.2))
       end
     elseif refrain.edit == "ref_feedback" then
       params:set((n-1).."feedback", util.clamp(params:get((n-1).."feedback")+d/100,0,1))
@@ -331,7 +314,6 @@ function ref_savestate()
   io.write("refrain".."\n")
   for i=1,2 do
     io.write(track[i].offset .. "\n")
-    --print(track[i].offset )
     io.write(track[i].rate .. "\n")
     io.write(track[i].bit .. "\n")
     io.write(track[i].pan .. "\n")
@@ -340,11 +322,9 @@ end
 
 function ref_loadstate()
   refrain_file = io.read()
-  --refrain_file)
   if refrain_file == "refrain" then  
     for i=1,2 do
       track[i].offset = tonumber(io.read())
-      --print(track[i].offset )
       local temp_rate = tonumber(io.read())
       track[i].rate = temp_rate
       softcut.rate(i, speedlist[track[i].rate])
