@@ -332,7 +332,7 @@ function ref_savestate()
   for i=1,2 do
     io.write(track[i].offset .. "\n")
     --print(track[i].offset )
-    io.write(speedlist[track[i].rate] .. "\n")
+    io.write(track[i].rate .. "\n")
     io.write(track[i].bit .. "\n")
     io.write(track[i].pan .. "\n")
   end
@@ -347,8 +347,7 @@ function ref_loadstate()
       --print(track[i].offset )
       local temp_rate = tonumber(io.read())
       track[i].rate = temp_rate
-      speedlist[track[i].rate] = temp_rate
-      softcut.rate(i, temp_rate)
+      softcut.rate(i, speedlist[track[i].rate])
       track[i].bit = tonumber(io.read())
       local temp_pan = tonumber(io.read())
       track[i].pan = temp_pan
