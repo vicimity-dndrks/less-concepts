@@ -134,7 +134,7 @@ local cycle_sel = "-"
 local p_duration = 4
 local p_duration_counter = 1
 local gridnote = 0
-local screennote = 0
+local screennote = nil
 local gridplay_active = false
 local ignorenote = nil
 local display_voice = {false, false}
@@ -332,7 +332,8 @@ local function iterate()
       for i = 1,2 do notes_off(i) end
       seed = next_seed
       bang()
-      
+      screennote = nil
+      gridnote = nil
       for i = 1,2 do
         display_voice[i] = false
         if seed_as_binary[voice[i].bit] == 1 then
@@ -372,9 +373,6 @@ local function iterate()
               crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
             end
           table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
-          else
-            gridnote = nil
-            screennote = nil
           end
       end
 
@@ -1032,13 +1030,13 @@ function redraw()
     screen.font_size(24)
     screen.move(4, 32)
     screen.level(1)
-
-    if (v1_b == 0 and v2_b == 0) or screennote == nil then
-      screen.text("-")
-      screen.move(5, 30)
-      screen.level(8)
-      screen.text("-")
-    elseif screennote ~= nil then
+    --(v1_b == 0 and v2_b == 0) or 
+    --if screennote == nil then
+    --  screen.text("*")
+    --  screen.move(5, 30)
+    --  screen.level(8)
+    --  screen.text("*")
+    if screennote ~= nil then
       screen.text(MusicUtil.note_num_to_name(screennote))
       screen.move(5, 30)
       screen.level(8)
