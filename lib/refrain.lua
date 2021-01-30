@@ -200,7 +200,7 @@ function refrain.redraw()
 
   screen.move(0,18)
   screen.level(refrain.edit=="engine_refrain" and 15 or 2)
-  screen.text("mix eng: " .. params:get("engine_input") .. " // adc: " .. params:get("input_input"))
+  screen.text("input engine: " .. params:get("engine_input") .. " // adc: " .. params:get("input_input"))
   
   screen.move(0,26)
   screen.level(refrain.edit=="ref_feedback" and 15 or 2)
