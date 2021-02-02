@@ -362,8 +362,7 @@ function ref_loadstate()
       softcut.phase_quant(i,0.07)
       softcut.event_phase(update_positions)
       softcut.poll_start_phase()
-
-      add_params()
+      params:bang()
     end
   else
     print("invalid data file (refrain)")

@@ -108,6 +108,14 @@ end
 local crow_gate_length = 0.005 --5 ms for 'standard' trig behavior
 local crow_gate_volts = 5
 local ppqn = 96
+local pset_wsyn_curve = 0
+local pset_wsyn_ramp = 0
+local pset_wsyn_fm_index = 0
+local pset_wsyn_fm_env = 0
+local pset_wsyn_fm_ratio_num = 0
+local pset_wsyn_fm_ratio_den = 0
+local pset_wsyn_lpg_time = 0
+local pset_wsyn_lpg_symmetry = 0
 -- please keep ppqn_divisions and ppqn_names same length and odd numbered lengths
 -- thank you @Zifor for clearing out the meaning of t
 local ppqn_divisions_variants = {
@@ -152,16 +160,20 @@ local preset_key_is_held = false
 local transport_run = true
 
 function clock.transport.start()
-  p_duration_counter = 1
-  ppqn_counter = 1
-  transport_run = true
+  if params:get("midi_transport") == 2 then
+    p_duration_counter = 1
+    ppqn_counter = 1
+    transport_run = true
+  end
 end
 
 function clock.transport.stop()
-  for i=1,2 do
-    notes_off(i)
+  if params:get("midi_transport") == 2 then
+    for i=1,2 do
+      notes_off(i)
+    end
+    transport_run = false
   end
-  transport_run = false
 end
 
 -- this section is all maths + computational events
@@ -414,68 +426,96 @@ function wsyn_add_params()
     name = "AR mode",
     options = {"off", "on"},
     default = 2,
-    action = function(val) crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") 
+      pset_wsyn_curve = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_curve",
     name = "Curve",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.curve(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.curve(" .. val .. ")") 
+      pset_wsyn_curve = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_ramp",
     name = "Ramp",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.ramp(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.ramp(" .. val .. ")") 
+      pset_wsyn_ramp = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_index",
     name = "FM index",
     controlspec = controlspec.new(0, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.fm_index(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_index(" .. val .. ")") 
+      pset_wsyn_fm_index = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_env",
     name = "FM env",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.fm_env(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_env(" .. val .. ")") 
+      pset_wsyn_fm_env = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_ratio_num",
     name = "FM ratio numerator",
     controlspec = controlspec.new(1, 20, "lin", 1, 2),
-    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. val .. "," .. params:get("wsyn_fm_ratio_den") .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_ratio(" .. val .. "," .. params:get("wsyn_fm_ratio_den") .. ")") 
+      pset_wsyn_fm_ratio_num = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_fm_ratio_den",
     name = "FM ratio denominator",
     controlspec = controlspec.new(1, 20, "lin", 1, 1),
-    action = function(val) crow.send("ii.wsyn.fm_ratio(" .. params:get("wsyn_fm_ratio_num") .. "," .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.fm_ratio(" .. params:get("wsyn_fm_ratio_num") .. "," .. val .. ")") 
+      pset_wsyn_fm_ratio_den = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_lpg_time",
     name = "LPG time",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.lpg_time(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.lpg_time(" .. val .. ")") 
+      pset_wsyn_lpg_time = val
+    end
   }
   params:add {
     type = "control",
     id = "wsyn_lpg_symmetry",
     name = "LPG symmetry",
     controlspec = controlspec.new(-5, 5, "lin", 0, 0, "v"),
-    action = function(val) crow.send("ii.wsyn.lpg_symmetry(" .. val .. ")") end
+    action = function(val) 
+      crow.send("ii.wsyn.lpg_symmetry(" .. val .. ")") 
+      pset_wsyn_lpg_symmetry = val
+    end
   }
   params:add{
-    type = "binary",
+    type = "trigger",
     id = "wsyn_randomize",
     name = "Randomize",
+    allow_pmap = false,
     action = function()
       params:set("wsyn_curve", math.random(-50, 50)/10)
       params:set("wsyn_ramp", math.random(-50, 50)/10)
@@ -487,6 +527,22 @@ function wsyn_add_params()
       params:set("wsyn_lpg_symmetry", math.random(-50, 50)/10)
     end
   }
+  params:add{
+    type = "binary",
+    id = "wsyn_init",
+    name = "Init",
+    action = function()
+      params:set("wsyn_curve", pset_wsyn_curve)
+      params:set("wsyn_ramp", pset_wsyn_ramp)
+      params:set("wsyn_fm_index", pset_wsyn_fm_index)
+      params:set("wsyn_fm_env", pset_wsyn_fm_env)
+      params:set("wsyn_fm_ratio_num", pset_wsyn_fm_ratio_num)
+      params:set("wsyn_fm_ratio_den", pset_wsyn_fm_ratio_den)
+      params:set("wsyn_lpg_time", pset_wsyn_lpg_time)
+      params:set("wsyn_lpg_symmetry", pset_wsyn_lpg_symmetry)
+    end
+  }
+  params:hide("wsyn_init")
 end
 
 function pulse()
@@ -534,7 +590,7 @@ function init()
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
   m = midi.connect(1)
 
-  params:add_group("time, midi & outputs", 23)
+  params:add_group("time, midi & outputs", 24)
 
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
@@ -558,7 +614,10 @@ function init()
   params:set_action("midi_device", function (x) m = midi.connect(x) end)
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
-  
+  params:add_option("midi_transport", "midi/link transport", {"off", "on"}, 1)
+  params:set_action("midi_transport", function (x) 
+    if x == 1 then transport_run = true end
+  end)
   params:add_separator("voice 1 outputs")
   params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
   params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 2)
@@ -691,6 +750,8 @@ function init()
   params:add_group("passersby", 31)
   passersby.add_params()
   wsyn_add_params()
+  params:bang()
+  params:set("wsyn_init",1)
 
   bang()
 
@@ -1623,6 +1684,14 @@ function savestate()
   end
   io.write(cycle_sel .. "\n")
   ref_savestate()
+  io.write(pset_wsyn_curve .. "\n")
+  io.write(pset_wsyn_ramp .. "\n")
+  io.write(pset_wsyn_fm_index .. "\n")
+  io.write(pset_wsyn_fm_env .. "\n")
+  io.write(pset_wsyn_fm_ratio_num .. "\n")
+  io.write(pset_wsyn_fm_ratio_den .. "\n")
+  io.write(pset_wsyn_lpg_time .. "\n")
+  io.write(pset_wsyn_lpg_symmetry .. "\n")
   io.close(file)
   params:write(_path.data .. "less_concepts/less_concepts-0"..selected_set)
 end
@@ -1711,6 +1780,17 @@ function loadstate()
         end
         cycle_sel = tostring(io.read())
         ref_loadstate()
+        params:read(_path.data .. "less_concepts/less_concepts-0"..selected_set)
+        params:bang()
+        pset_wsyn_curve = tonumber(io.read())
+        pset_wsyn_ramp = tonumber(io.read())
+        pset_wsyn_fm_index = tonumber(io.read())
+        pset_wsyn_fm_env = tonumber(io.read())
+        pset_wsyn_fm_ratio_num = tonumber(io.read())
+        pset_wsyn_fm_ratio_den  = tonumber(io.read())
+        pset_wsyn_lpg_time = tonumber(io.read())
+        pset_wsyn_lpg_symmetry = tonumber(io.read())
+        params:set("wsyn_init",1)
       else
         --tlc for pre 2.2 saves
         sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
@@ -1720,8 +1800,6 @@ function loadstate()
           new_preset_pool[i].p_duration = 4
         end
       end
-    params:read(_path.data .. "less_concepts/less_concepts-0"..selected_set)
-    params:bang()
     else
       print("invalid data file")
     end
