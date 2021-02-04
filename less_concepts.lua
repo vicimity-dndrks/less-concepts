@@ -38,6 +38,12 @@
 -- think.
 -- discover.
 
+engine.name = "Passersby"
+passersby = include "passersby/lib/passersby_engine"
+
+refrain = include "lib/refrain"
+MusicUtil = require "musicutil"
+
 local seed = 0
 local rule = 0
 local next_seed = nil
@@ -62,7 +68,13 @@ local semi = 0
 local preset_count = 0
 local active_notes_v1 = {}
 local active_notes_v2 = {}
-names = {"ionian","aeolian", "dorian", "phrygian", "lydian", "mixolydian", "major_pent", "minor_pent", "shang", "jiao", "zhi", "todi", "purvi", "marva", "bhairav", "ahirbhairav", "chromatic"}
+names = {}
+notes = {}
+for i = 1, #MusicUtil.SCALES do
+  table.insert(names, string.lower(MusicUtil.SCALES[i].name))
+  table.insert(notes, MusicUtil.generate_scale(0, names[i], 3))
+end
+
 edit_foci = {
   "lc_bits",
   "seed/rule",
@@ -146,12 +158,6 @@ local screennote = nil
 local gridplay_active = false
 local ignorenote = nil
 local display_voice = {false, false}
-
-engine.name = "Passersby"
-passersby = include "passersby/lib/passersby_engine"
-
-refrain = include "lib/refrain"
-MusicUtil = require "musicutil"
 
 local options = {}
 
@@ -666,7 +672,7 @@ function init()
   params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
   
   params:add_group("scaling & randomization",19)
-  params:add_option("scale", "scale", names, 8)
+  params:add_option("scale", "scale", names, 1)
   params:set_action("scale", function(x) coll = x end)
   params:add_number("global transpose", "global transpose", -24,24,0)
   params:set_action("global transpose", function (x) transpose(x) end)
@@ -754,25 +760,6 @@ function init()
   params:set("wsyn_init",1)
 
   bang()
-
-  notes = { {0,2,4,5,7,9,11,12,14,16,17,19,21,23,24,26,28,29,31,33,35,36,38,40,41,43,45,47,48,50,52,53},
-            {0,2,3,5,7,8,10,12,14,15,17,19,20,22,24,26,27,29,31,32,34,36,38,39,41,43,44,46,48,50,51,53},
-            {0,2,3,5,7,9,10,12,14,15,17,19,21,22,24,26,27,29,31,33,34,36,38,39,41,43,45,46,48,50,51,53},
-            {0,1,3,5,7,8,10,12,13,15,17,19,20,22,24,25,27,29,31,32,34,36,37,39,41,43,44,46,48,49,51,53},
-            {0,2,4,6,7,9,11,12,14,16,18,19,21,23,24,26,28,30,31,33,35,36,38,40,42,43,45,47,48,50,52,54},
-            {0,2,4,5,7,9,10,12,14,16,17,19,21,22,24,26,28,29,31,33,34,36,38,40,41,43,45,46,48,50,52,53},
-            {0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36,38,40,43,45,48,50,52,55,57,60,62,64,67,69,71,74},
-            {0,3,5,7,10,12,15,17,19,22,24,27,29,31,34,36,39,41,43,46,48,51,53,55,58,60,63,65,67,70,72,74},
-            {0,2,5,7,10,12,14,17,19,22,24,26,29,31,34,36,38,41,43,46,48,50,53,55,58,60,62,65,67,69,72,74},
-            {0,3,5,8,10,12,15,17,20,22,24,27,29,32,34,36,39,41,44,46,48,51,53,56,58,60,63,65,68,71,73,76},
-            {0,2,5,7,9,12,14,17,19,21,24,26,29,31,33,36,38,41,43,45,48,50,53,55,57,60,62,65,67,69,72,74},
-            {0,1,3,6,7,8,11,12,13,15,18,19,20,23,24,25,27,30,31,32,35,36,37,39,42,43,44,47,48,49,51,54},
-            {0,1,4,6,7,8,11,12,13,16,18,19,20,23,24,25,28,30,31,32,35,36,37,40,42,43,44,47,48,49,52,54},
-            {0,1,4,6,7,9,11,12,13,16,18,19,21,23,24,25,28,30,31,33,35,36,37,40,42,43,45,47,48,49,52,54},
-            {0,1,4,5,7,8,11,12,13,16,17,19,20,23,24,25,28,29,31,32,35,36,37,40,41,43,44,47,48,49,52,53},
-            {0,1,4,5,7,9,10,12,13,16,17,19,21,22,24,25,28,29,31,33,35,36,37,40,41,43,45,47,48,49,52,53},
-            {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31} }
-  
 
   clock.run(pulse)
 
