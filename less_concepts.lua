@@ -300,7 +300,9 @@ local function iterate()
       p_duration = params:get("p_duration")
       if edit == "cycle" then edit = "seed/rule" end
     end
-    p_duration_counter = p_duration_counter + 1
+    if cycle_sel ~= "*" and cycle_sel ~= "-" then
+      p_duration_counter = p_duration_counter + 1
+    end
     if ppqn_counter > ppqn / ppqn_divisions[sel_ppqn_div] then
       ppqn_counter = 1
 
@@ -317,7 +319,7 @@ local function iterate()
         --local tmp_edit = edit
       elseif p_duration_counter > ppqn*p_duration and preset_key_is_held == false then
         p_duration_counter = 1
-        if cycle_sel ~= "-" and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
+        if (cycle_sel ~= "-" and cycle_sel ~= "*") and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
           if string.find(cycle_sel, ">") then --cycle up
             selected_preset = selected_preset + 1
             if selected_preset > preset_count then
@@ -1179,7 +1181,7 @@ function short_press(x)
       cycle_sel = "~"
     end
   end
-  p_duration_counter = 0
+  p_duration_counter = 1
   if is_destructive then cycle_sel = cycle_sel .. "*" end
 end
 
@@ -1568,7 +1570,7 @@ function new_preset_pack(set)
   new_preset_pool[set].v1_octave = voice[1].octave
   new_preset_pool[set].v2_octave = voice[2].octave
   new_preset_pool[set].sel_ppqn_div = sel_ppqn_div
-  new_preset_pool[set].p_duration = params:get("p_duration")
+  new_preset_pool[set].p_duration = p_duration
 end
 
 function new_preset_unpack(set)
