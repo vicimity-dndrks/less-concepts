@@ -5,12 +5,6 @@
 
 ![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/less_concepts_grid.png?raw=true)
 
-
-
-# less_concepts
-1. uninstall old less concepts
-2. install with ```;install https://github.com/linusschrab/less_concepts``` (post norns 210114)
-
 *less concepts is rooted in the idea that complexity is just a shit-ton of simplicity, chained together. at its core, less concepts holds 65,536 possible combinations of notes which can be gated, offset, and manipulated to create minimal sequences for improvisation. small changes to a single parameter can bring sweeping or subtle changes.*
 
 *seek. think. discover.*
