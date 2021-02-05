@@ -848,8 +848,6 @@ function enc(n,d)
     if KEY3 == false and KEY2 == false then
       if n == 2 then
         if edit == "presets" then
-          if cycle_sel ~= "-" then
-          end
           selected_preset = util.clamp(selected_preset+d,1,preset_count)
           new_preset_unpack(selected_preset)
         elseif edit == "rand_prob" then
