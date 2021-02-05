@@ -14,7 +14,7 @@
 
 **less concepts 3.0**
 
-at first you are met by a constructive concept built from the seed 36 and rule 30. root note is C and the scale is major. the sequence is fed through the built in sound engine "passersby" and midi device 1 / channel 1. now seek!
+at first you are met by a constructive concept built from the seed 36 and rule 30. root note is C and the scale is major. the sequence is fed through the built in sound engine "passersby" and midi device 1 / channel 1.
 
 - the combination of seeds and rules feed the sequencer with 8-bit numbers. this number is visualized by the eight squares top left on the screen / grid, a new number is seeded with every beat of the selected time signature. the two voices are individually triggered when they cross paths with the true value 1. the current 8-bit number translates into a note by passing it through the limits for high / low and then transposed within the selected scale.
 
