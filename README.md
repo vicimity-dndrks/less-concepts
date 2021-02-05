@@ -1,8 +1,11 @@
+
 # less_concepts
 1. uninstall old less concepts
 2. install with ```;install https://github.com/linusschrab/less_concepts``` (post norns 210114)
 
-![less concepts for monome norns](https://llllllll.co/uploads/default/original/3X/d/d/dd3f3d1bf8f625ba6a28fa3723f5ede1134c3ebe.jpeg)
+![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/less_concepts_grid.png?raw=true)
+
+
 
 # less_concepts
 1. uninstall old less concepts
@@ -13,6 +16,8 @@
 *seek. think. discover.*
 
 **less concepts 3.0**
+
+![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/1.png?raw=true)
 
 at first you are met by a constructive concept built from the seed 36 and rule 30. root note is C and the scale is major. the sequence is fed through the built in sound engine "passersby" and midi device 1 / channel 1.
 
@@ -32,6 +37,8 @@ NEWS
 
 **\~ r e f r a i n**
 
+![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/2.png?raw=true)
+
 hold K1 to find the built in pitch, delay, micro looper.
 
 NEWS
@@ -43,6 +50,8 @@ NEWS
 / / / / / / / /
 
 **params -> edit**
+
+![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/3.png?raw=true)
 
 'load & save' 
 - all values including params are now saved with a set. old saves still work.
