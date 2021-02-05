@@ -72,7 +72,7 @@ names = {}
 notes = {}
 for i = 1, #MusicUtil.SCALES do
   table.insert(names, string.lower(MusicUtil.SCALES[i].name))
-  table.insert(notes, MusicUtil.generate_scale(0, names[i], 3))
+  table.insert(notes, MusicUtil.generate_scale(0, names[i], 7))
 end
 
 edit_foci = {
@@ -1633,7 +1633,6 @@ function savestate()
       io.write(new_preset_pool[i].v2_octave .. "\n")
     end
   else
-    print("HERE" .. new_seed)
     io.write(new_seed .. "\n")
     io.write(new_rule .. "\n")
     io.write(voice[1].bit .. "\n")
