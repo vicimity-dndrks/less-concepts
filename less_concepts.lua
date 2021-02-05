@@ -44,6 +44,9 @@ passersby = include "passersby/lib/passersby_engine"
 refrain = include "lib/refrain"
 MusicUtil = require "musicutil"
 
+local m = midi.connect()
+local midi_in = midi.connect()
+
 local seed = 0
 local rule = 0
 local next_seed = nil
@@ -181,6 +184,7 @@ function clock.transport.stop()
     transport_run = false
   end
 end
+
 
 -- this section is all maths + computational events
 
@@ -596,9 +600,8 @@ function init()
   params:set_action("set", function (x) selected_set = x end)
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
-  m = midi.connect(1)
 
-  params:add_group("time, midi & outputs", 24)
+  params:add_group("time, midi & outputs", 25)
 
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
@@ -618,8 +621,20 @@ function init()
   p_duration = params:get("p_duration")
 
   params:add_separator("midi")
-  params:add_number("midi_device", "midi device", 1, #midi.vports, 1)
+  params:add_number("midi_device", "midi device (out)", 1, #midi.vports, 1)
   params:set_action("midi_device", function (x) m = midi.connect(x) end)
+  m = midi.connect(params:get("midi_device"))
+  params:add_number("midi_device_in", "midi device (in)", 1, #midi.vports, 2)
+  params:set_action("midi_device_in", function (x) midi_in = midi.connect(x) end)
+  midi_in = midi.connect(params:get("midi_device_in"))
+  midi_in.event = function(data)
+    local d = midi.to_msg(data)
+    if d.type == "program_change" then
+      if d.val < preset_count then
+        selected_preset = d.val + 1
+      end
+    end
+  end
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
   params:add_option("midi_transport", "midi/link transport", {"off", "on"}, 1)
