@@ -26,7 +26,7 @@ at first you are met by a constructive concept built from the seed 36 and rule 3
 NEWS
 
 - time: change time signature for the sequencer. 1/4 - 1/32 (more options available in params).
-- the cycling sequencer will step though saved snapshots and move when the indicated duration has passed. the cycling sequencer can move up '>', down '<' or random '~'.
+- a cycling sequencer that steps through saved snapshots and move when the indicated duration has passed. the cycling sequencer can move up '>', down '<' or random '~'.
 
 / / / / / / / /
 
