@@ -1,7 +1,8 @@
 -- less concepts:
 -- cellular automata sequencer
--- v2.1.2 (crow) @dan_derks
--- llllllll.co/t/less-concepts/
+-- v3.0 by @dan_derks and
+-- @vicimity (linus schrab)
+-- llllllll.co/t/less-concepts-3/
 --
 -- hold key 1: switch between
 -- less concepts +
@@ -12,18 +13,18 @@
 -- enc 3: // change right side
 --
 -- key 3: randomize selected
--- key 2: take snapshot (*)
--- when * selected...
+-- key 2: take snapshot
+-- when snapshots selected...
 -- key 2: recall snapshot
 -- hold key 2 then key 3 (NEW):
 -- delete selected snapshot
 -- params: midi, +/- st, timbre,
 -- probabilities, delay settings,
--- save snapshots to set (NEW)
+-- save ALL to set
 --
 -- plug in grid
 -- (1,1) to (8,2): bits
--- (1, 9) and (2, 9) : mutes bits
+-- (1, 9) and (2, 9) : mute bits
 -- (10,1) to (16,2): octaves
 -- (1,3) to (16,3): randomize
 -- (2,5) + (1,4) to (16,5): low
@@ -131,6 +132,7 @@ local pset_wsyn_fm_ratio_num = 0
 local pset_wsyn_fm_ratio_den = 0
 local pset_wsyn_lpg_time = 0
 local pset_wsyn_lpg_symmetry = 0
+local pset_wsyn_vel = 0
 -- please keep ppqn_divisions and ppqn_names same length and odd numbered lengths
 -- thank you @Zifor for clearing out the meaning of t
 local ppqn_divisions_variants = {
@@ -394,7 +396,7 @@ local function iterate()
               crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
             end
             if params:get("voice_"..i.."_w") == 2 then
-              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. 5 .. ")")
+              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. pset_wsyn_vel .. ")")
             end
           table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
           end
@@ -431,7 +433,7 @@ local function transpose(semitone)
 end
 
 function wsyn_add_params()
-  params:add_group("w/syn",10)
+  params:add_group("w/syn",11)
   params:add {
     type = "option",
     id = "wsyn_ar_mode",
@@ -439,8 +441,16 @@ function wsyn_add_params()
     options = {"off", "on"},
     default = 2,
     action = function(val) 
-      crow.send("ii.wsyn.ar_mode(" .. (val - 1) .. ")") 
-      pset_wsyn_curve = val
+      crow.send("ii.wsyn.ar_mode(".. (val-1) ..")")
+    end
+  }
+  params:add {
+    type = "control",
+    id = "wsyn_vel",
+    name = "Velocity",
+    controlspec = controlspec.new(0, 10, "lin", 0, 5, "v"),
+    action = function(val) 
+      pset_wsyn_vel = val
     end
   }
   params:add {
@@ -552,6 +562,7 @@ function wsyn_add_params()
       params:set("wsyn_fm_ratio_den", pset_wsyn_fm_ratio_den)
       params:set("wsyn_lpg_time", pset_wsyn_lpg_time)
       params:set("wsyn_lpg_symmetry", pset_wsyn_lpg_symmetry)
+      params:set("wsyn_vel", pset_wsyn_vel)
     end
   }
   params:hide("wsyn_init")
@@ -601,7 +612,7 @@ function init()
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
 
-  params:add_group("time, midi & outputs", 25)
+  params:add_group("time, midi & outputs", 26)
 
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
@@ -625,22 +636,30 @@ function init()
   params:set_action("midi_device", function (x) m = midi.connect(x) end)
   m = midi.connect(params:get("midi_device"))
   params:add_number("midi_device_in", "midi device (in)", 1, #midi.vports, 2)
-  params:set_action("midi_device_in", function (x) midi_in = midi.connect(x) end)
-  midi_in = midi.connect(params:get("midi_device_in"))
-  midi_in.event = function(data)
-    local d = midi.to_msg(data)
-    if d.type == "program_change" then
-      if d.val < preset_count then
-        selected_preset = d.val + 1
+  params:set_action("midi_device_in", function (x)
+    midi_in = midi.connect(x)
+    midi_in.event = function(data)
+      local d = midi.to_msg(data)
+      if d.type == "note_on" then
+        if params:get("midi_seq_root") + preset_count >= d.note + 1 then
+          selected_preset = d.note - params:get("midi_seq_root") + 1
+          new_preset_unpack(selected_preset)
+        end
       end
     end
-  end
+  end)
+  midi_in = midi.connect(params:get("midi_device_in"))
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
   params:add_option("midi_transport", "midi/link transport", {"off", "on"}, 1)
   params:set_action("midi_transport", function (x) 
     if x == 1 then transport_run = true end
   end)
+  midi_seq_note_list = {}
+  for i=0,127 do
+    table.insert(midi_seq_note_list, MusicUtil.note_num_to_name(i,true))
+  end
+  params:add_option("midi_seq_root","midi -> snapshots root", midi_seq_note_list,60)
   params:add_separator("voice 1 outputs")
   params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
   params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 2)
@@ -687,7 +706,7 @@ function init()
     end
   end)
   params:add_option("voice_2_w", "vox 2 -> w/syn", {"no", "yes"}, 1)
-  
+
   params:add_group("scaling & randomization",19)
   params:add_option("scale", "scale", names, 1)
   params:set_action("scale", function(x) coll = x end)
@@ -783,7 +802,7 @@ function init()
   grid_dirty = true
   clock.run(grid_redraw_clock)
 
-end
+end 
 
 -- this section is all hardware stuff
 -- hardware: key interaction
@@ -1169,14 +1188,14 @@ end
 function short_press(x)
   if string.find(cycle_sel, "*") and cycle_sel ~= "*" then
     is_destructive = true
-    if cycle_sel == "<*" and x == 9 then
-      cycle_sel = "<"
+    if x == 9 then
+      cycle_sel = "<*"
       is_destructive = false
-    elseif cycle_sel == ">*" and x == 11 then
-      cycle_sel = ">"
+    elseif x == 11 then
+      cycle_sel = ">*"
       is_destructive = false
-    elseif cycle_sel == "~*" and x == 10 then
-      cycle_sel = "~"
+    elseif x == 10 then
+      cycle_sel = "~*"
       is_destructive = false
     end
   else
@@ -1195,7 +1214,6 @@ function short_press(x)
     end
   end
   p_duration_counter = 1
-  if is_destructive then cycle_sel = cycle_sel .. "*" end
 end
 
 -- hardware: grid event (eg 'what happens when a button is pressed')
@@ -1693,6 +1711,7 @@ function savestate()
   io.write(pset_wsyn_fm_ratio_den .. "\n")
   io.write(pset_wsyn_lpg_time .. "\n")
   io.write(pset_wsyn_lpg_symmetry .. "\n")
+  io.write(pset_wsyn_vel .. "\n")
   io.close(file)
   params:write(_path.data .. "less_concepts/less_concepts-0"..selected_set)
 end
@@ -1791,6 +1810,7 @@ function loadstate()
         pset_wsyn_fm_ratio_den  = tonumber(io.read())
         pset_wsyn_lpg_time = tonumber(io.read())
         pset_wsyn_lpg_symmetry = tonumber(io.read())
+        pset_wsyn_vel = tonumber(io.read())
         params:set("wsyn_init",1)
       else
         --tlc for pre 2.2 saves
