@@ -1,5 +1,5 @@
 
-# less_concepts
+# less concepts 3.0
 1. uninstall old less concepts
 2. install with ```;install https://github.com/linusschrab/less_concepts``` (post norns 210114)
 
