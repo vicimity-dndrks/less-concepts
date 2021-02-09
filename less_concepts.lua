@@ -1420,13 +1420,6 @@ end
 function grid_redraw()
   g:all(0)
 
-  for y=6,8 do
-    for x=5,7 do
-      if momentary[x][y] then g:led(x,y,15)
-      else g:led(x,y,2) end
-    end
-  end
-
   --leds for stream
   for i = 1, 8 do
     if seed_as_binary[i] == 1 then
