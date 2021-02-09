@@ -154,7 +154,7 @@ local selected_time_param = 1
 time_clamp_min = 1
 time_clamp_max = #ppqn_divisions
 
-local cycle_modes = {"*", "-", "<", "~", ">", "<*", "~*", ">*"} -- destructive, off, up, down, random
+local cycle_modes = {"*", "-", "<", "~", ">", "<*", "~*", ">*"} -- destructive, off, down, random, up
 local cycle_sel = "-"
 local p_duration = 4
 local p_duration_counter = 1
@@ -322,7 +322,6 @@ local function iterate()
         new_preset_pack(selected_preset)
       end
       if preset_key_is_held then
-        --local tmp_edit = edit
       elseif p_duration_counter > ppqn*p_duration and preset_key_is_held == false then
         p_duration_counter = 1
         if (cycle_sel ~= "-" and cycle_sel ~= "*") and preset_count > 0 then --cycle if there are presets and cycle mode is "on"
@@ -336,7 +335,7 @@ local function iterate()
             if selected_preset <= 0 then
               selected_preset = preset_count
             end
-          elseif string.find(cycle_sel, "~") then --cycle random
+          elseif string.find(cycle_sel, "~") then --'cycle' random
             selected_preset = math.random(1, preset_count)
           end
           new_preset_unpack(selected_preset)
@@ -375,29 +374,30 @@ local function iterate()
             end
             screennote = notes[coll][scaled] + random_note[i].add
             gridnote = scaled
-            if params:get("voice_"..i.."_engine") == 2 then
-              engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
-            end
-            if params:get("voice_"..i.."_midi_A") == 2 then
-              m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_A"))
-            end
-            if params:get("voice_"..i.."_midi_B") == 2 then
-              m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_B"))
-            end
-            if params:get("voice_"..i.."_crow_1") == 2 then
-              crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-              crow.output[2].execute()
-            end
-            if params:get("voice_"..i.."_crow_2") == 2 then
-              crow.output[3].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-              crow.output[4].execute()
-            end
-            if params:get("voice_"..i.."_JF") == 2 then
-              crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
-            end
-            if params:get("voice_"..i.."_w") == 2 then
-              crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. pset_wsyn_vel .. ")")
-            end
+              if params:get("voice_"..i.."_engine") == 2 then
+                engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
+              end
+              if params:get("voice_"..i.."_midi_A") == 2 then
+                m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_A"))
+              end
+              if params:get("voice_"..i.."_midi_B") == 2 then
+                m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_B"))
+              end
+              if params:get("voice_"..i.."_crow_1") == 2 then
+                crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+                crow.output[2].execute()
+              end
+              if params:get("voice_"..i.."_crow_2") == 2 then
+                crow.output[3].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
+                crow.output[4].execute()
+              end
+              if params:get("voice_"..i.."_JF") == 2 then
+                crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
+              end
+              if params:get("voice_"..i.."_w") == 2 then
+                crow.send("ii.wsyn.play_note(".. ((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[1].add)-48)/12 ..", " .. pset_wsyn_vel .. ")")
+              end
+            --end
           table.insert(voice[i].active_notes,(notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add))
           end
       end
@@ -433,7 +433,7 @@ local function transpose(semitone)
 end
 
 function wsyn_add_params()
-  params:add_group("w/syn",11)
+  params:add_group("w/syn",13)
   params:add {
     type = "option",
     id = "wsyn_ar_mode",
@@ -448,7 +448,7 @@ function wsyn_add_params()
     type = "control",
     id = "wsyn_vel",
     name = "Velocity",
-    controlspec = controlspec.new(0, 10, "lin", 0, 5, "v"),
+    controlspec = controlspec.new(0, 5, "lin", 0, 2, "v"),
     action = function(val) 
       pset_wsyn_vel = val
     end
@@ -535,9 +535,28 @@ function wsyn_add_params()
   }
   params:add{
     type = "trigger",
+    id = "wsyn_trentvis",
+    name = "Trentvision >>>",
+  }
+  params:add{
+    type = "trigger",
+    id = "wsyn_pluckylog",
+    name = "Pluckylogger >>>",
+    action = function()
+      params:set("wsyn_curve", math.random(-40, 40)/10)
+      params:set("wsyn_ramp", math.random(-5, 5)/10)
+      params:set("wsyn_fm_index", math.random(-50, 50)/10)
+      params:set("wsyn_fm_env", math.random(-50, 40)/10)
+      params:set("wsyn_fm_ratio_num", math.random(1, 4))
+      params:set("wsyn_fm_ratio_den", math.random(1, 4))
+      params:set("wsyn_lpg_time", math.random(-28, -5)/10)
+      params:set("wsyn_lpg_symmetry", math.random(-50, -30)/10)
+    end
+  }
+  params:add{
+    type = "trigger",
     id = "wsyn_randomize",
-    name = "Randomize",
-    allow_pmap = false,
+    name = "Randomize all >>>",
     action = function()
       params:set("wsyn_curve", math.random(-50, 50)/10)
       params:set("wsyn_ramp", math.random(-50, 50)/10)
@@ -550,7 +569,7 @@ function wsyn_add_params()
     end
   }
   params:add{
-    type = "binary",
+    type = "trigger",
     id = "wsyn_init",
     name = "Init",
     action = function()
@@ -588,7 +607,6 @@ function init()
   new_rule = rule
 
   press_counter = {}
-
   momentary = {}
 
   for x = 1,16 do
@@ -642,7 +660,7 @@ function init()
       local d = midi.to_msg(data)
       if d.type == "note_on" then
         if params:get("midi_seq_root") + preset_count >= d.note + 1 then
-          selected_preset = d.note - params:get("midi_seq_root") + 1
+          selected_preset = util.clamp(d.note - params:get("midi_seq_root") + 2, 1, preset_count)
           new_preset_unpack(selected_preset)
         end
       end
@@ -659,7 +677,7 @@ function init()
   for i=0,127 do
     table.insert(midi_seq_note_list, MusicUtil.note_num_to_name(i,true))
   end
-  params:add_option("midi_seq_root","midi -> snapshots root", midi_seq_note_list,60)
+  params:add_option("midi_seq_root","midi -> snapshots root", midi_seq_note_list,61)
   params:add_separator("voice 1 outputs")
   params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
   params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 2)
@@ -846,8 +864,8 @@ function key(n,z)
       else
         if preset_count == 1 then
           if edit == "presets" then
-            edit = "lc_bits"
-            dd = 6
+            edit = "seed/rule"
+            dd = 2
           end
         end
         preset_remove(selected_preset)
@@ -965,8 +983,7 @@ function enc(n,d)
             
             new_preset_pool[selected_preset].v2_octave = math.min(3,(math.max(new_preset_pool[selected_preset].v2_octave + d,-3)))
           end
-            voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
-          
+          voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
           
           for i=10,16 do
             g:led(i,2,0)
@@ -977,7 +994,7 @@ function enc(n,d)
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].v2_bit = math.min(8,(math.max(new_preset_pool[selected_preset].v2_bit - d,0)))
           end
-            voice[2].bit = math.min(8,(math.max(voice[2].bit - d,0)))
+          voice[2].bit = math.min(8,(math.max(voice[2].bit - d,0)))
           
         elseif edit == "seed/rule" then
           if string.find(cycle_sel, "*") ~= nil then
@@ -992,7 +1009,7 @@ function enc(n,d)
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].sel_ppqn_div = util.clamp(new_preset_pool[selected_preset].sel_ppqn_div + d, 1, #ppqn_divisions)  
           end
-            sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
+          sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
 
         elseif edit == "cycle" and preset_count > 0 then
           p_duration = util.clamp(p_duration + d, 1, 32)
@@ -1112,12 +1129,6 @@ function redraw()
     screen.font_size(24)
     screen.move(4, 32)
     screen.level(1)
-    --(v1_b == 0 and v2_b == 0) or 
-    --if screennote == nil then
-    --  screen.text("*")
-    --  screen.move(5, 30)
-    --  screen.level(8)
-    --  screen.text("*")
     if screennote ~= nil then
       screen.text(MusicUtil.note_num_to_name(screennote))
       screen.move(5, 30)
@@ -1219,7 +1230,6 @@ end
 -- hardware: grid event (eg 'what happens when a button is pressed')
 
 g.key = function(x,y,z)
-
   -- buttons for clock divisions
   if y == 8 and x >= 1 and x <= 3 then
     if y == 8 and x == 1 and z == 1 then
@@ -1365,7 +1375,7 @@ g.key = function(x,y,z)
   end
 
   --key for removing and adding presets
-  if y == 6 then
+  if y == 6 and x >= 15 and x <= 16 then
     if x == 15 and preset_count > 0 and z == 1 then 
         press_counter[x] = clock.run(remove_wait, x)
       elseif x == 14 and z == 1 then
@@ -1409,6 +1419,13 @@ end
 
 function grid_redraw()
   g:all(0)
+
+  for y=6,8 do
+    for x=5,7 do
+      if momentary[x][y] then g:led(x,y,15)
+      else g:led(x,y,2) end
+    end
+  end
 
   --leds for stream
   for i = 1, 8 do
@@ -1637,9 +1654,14 @@ function preset_remove(set)
       new_preset_pool[i].p_duration = new_preset_pool[i+1].p_duration
     end
     if selected_preset > 0 and selected_preset <= preset_count then
-      selected_preset = 0
-    elseif selected_preset == preset_count then
-      selected_preset = util.clamp(selected_preset - 1, 1, 16)
+      if KEY2 == true and preset_count > 1 then
+        selected_preset = util.clamp(selected_preset - 1, 1, 16)
+        new_preset_unpack(selected_preset)
+      else
+        selected_preset = 0
+      end
+    --elseif selected_preset == preset_count then
+    --  selected_preset = util.clamp(selected_preset - 1, 1, 16)
     end
     preset_count = util.clamp(preset_count - 1, 0, 16)
     redraw()
