@@ -818,7 +818,7 @@ function init()
   clock.run(pulse)
 
   grid_dirty = true
-  clock.run(grid_redraw_clock)
+  clock.run(redraw_clock)
 
 end 
 
@@ -1027,7 +1027,7 @@ end
 
 -- hardware: screen redraw
 function redraw()
-  if screen_focus%2 == 1 then
+  if screen_focus % 2 == 1 then
     if edit == "presets" and preset_count > 0 and string.find(cycle_sel, "*") ~= nil then
       seed_string = new_preset_pool[selected_preset].seed
       rule_string = new_preset_pool[selected_preset].rule
@@ -1147,9 +1147,9 @@ function redraw()
     end
 
     screen.update()
-  elseif screen_focus%2==0 then
+  --elseif screen_focus%2==0 then
     -- PUT OTHER SCREEN REDRAW HERE
-    refrain.redraw()
+    --refrain.redraw()
   end
 end
 
@@ -1375,7 +1375,7 @@ g.key = function(x,y,z)
   end
 
   --key for removing and adding presets
-  if y == 6 and x >= 15 and x <= 16 then
+  if y == 6 and x >= 14 and x <= 16 then
     if x == 15 and preset_count > 0 and z == 1 then 
         press_counter[x] = clock.run(remove_wait, x)
       elseif x == 14 and z == 1 then
@@ -1407,9 +1407,12 @@ function remove_wait(x)
 end
 
 -- hardware: grid redraw
-function grid_redraw_clock()
+function redraw_clock()
   while true do
     clock.sleep(1/15)
+    if screen_focus%2 == 0 then
+      refrain.redraw()
+    end
     if grid_dirty then
       grid_redraw()
       grid_dirty = false
