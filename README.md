@@ -29,7 +29,7 @@ NEWS
 
 / / / / / / / /
 
-**~ r e f r a i n**
+**\~ r e f r a i n**
 
 ![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/2.png?raw=true)
 
