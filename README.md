@@ -7,7 +7,7 @@
 
 *less concepts is rooted in the idea that complexity is just a shit-ton of simplicity, chained together. at its core, less concepts holds 65,536 possible combinations of notes which can be gated, offset, and manipulated to create minimal sequences for improvisation. small changes to a single parameter can bring sweeping or subtle changes.*
 
-*seek. think. discover.*
+*seek. think. discover.* - dan derks
 
 **less concepts 3.0**
 
@@ -24,12 +24,12 @@ at first you are met by a constructive concept built from the seed 36 and rule 3
 
 NEWS
 
-- time: change time signature for the sequencer. 1/4 - 1/32 (more options available in params).
+- time: change time signature for the sequencer. 1/8 - 1/32 (more options available in params).
 - a cycling sequencer that steps through saved snapshots and move when the indicated duration has passed. the cycling sequencer can move up '>', down '<' or random '~'.
 
 / / / / / / / /
 
-**\~ r e f r a i n**
+**~ r e f r a i n**
 
 ![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/2.png?raw=true)
 
