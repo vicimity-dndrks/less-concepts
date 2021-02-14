@@ -1,10 +1,3 @@
-
-# less concepts 3.0
-1. uninstall old less concepts
-2. install with ```;install https://github.com/linusschrab/less_concepts``` (post norns 210114)
-
-![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/less_concepts_grid.png?raw=true)
-
 *less concepts is rooted in the idea that complexity is just a shit-ton of simplicity, chained together. at its core, less concepts holds 65,536 possible combinations of notes which can be gated, offset, and manipulated to create minimal sequences for improvisation. small changes to a single parameter can bring sweeping or subtle changes.*
 
 *seek. think. discover.* - dan derks
@@ -26,6 +19,11 @@ NEWS
 
 - time: change time signature for the sequencer. 1/8 - 1/32 (more options available in params).
 - a cycling sequencer that steps through saved snapshots and move when the indicated duration has passed. the cycling sequencer can move up '>', down '<' or random '~'.
+
+**grid operation**
+
+![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/less_concepts_grid.png?raw=true)
+
 
 / / / / / / / /
 
