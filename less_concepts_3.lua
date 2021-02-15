@@ -1725,6 +1725,7 @@ function savestate()
     io.write(params:get("tran prob "..i) .. "\n")
   end
   io.write("LC3\n")
+  io.write(params:get("time_div_opt").."\n")
   io.write(selected_time_param .. "\n")
   if preset_count == 0 then
     io.write(sel_ppqn_div .. "\n")
@@ -1811,6 +1812,8 @@ function loadstate()
       end
       extended_file = io.read()
       if extended_file == "LC3" then
+
+        params:set("time_div_opt", tonumber(io.read()))
         selected_time_param = tonumber(io.read())
         ppqn_names = ppqn_names_variants[selected_time_param]
         ppqn_divisions = ppqn_divisions_variants[selected_time_param]
@@ -1825,7 +1828,6 @@ function loadstate()
             new_preset_pool[i].p_duration = tonumber(io.read())
           end
           new_preset_unpack(selected_preset)
-          selected_preset = 0
         end
         cycle_sel = tostring(io.read())
         ref_loadstate()
