@@ -1820,12 +1820,12 @@ function loadstate()
           sel_ppqn_div = tonumber(io.read())
           p_duration = tonumber(io.read())
         else
-          selected_preset = 0
           for i = 1,preset_count do
             new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
             new_preset_pool[i].p_duration = tonumber(io.read())
           end
           new_preset_unpack(selected_preset)
+          selected_preset = 0
         end
         cycle_sel = tostring(io.read())
         ref_loadstate()
