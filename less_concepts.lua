@@ -170,6 +170,9 @@ local destructive = false
 local preset_key_is_held = false
 local transport_run = true
 
+local grid_dirty = false
+local screen_dirty = false
+
 function clock.transport.start()
   if params:get("midi_transport") == 2 then
     p_duration_counter = 1
@@ -232,7 +235,8 @@ end
 
 -- pack the seeds into clusters, compare these against neighborhoods to determine gates in iterate()
 local function bang()
-  redraw()
+  --redraw()
+  screen_dirty = true
   seed_to_binary()
   rule_to_binary()
   seed_pack1 = {seed_as_binary[1], seed_as_binary[8], seed_as_binary[7]}
@@ -410,7 +414,8 @@ local function iterate()
         end
       end
     end
-    redraw()
+    --redraw()
+    screen_dirty = true
     grid_dirty = true
     end
   end
@@ -878,10 +883,11 @@ function key(n,z)
       KEY3 = false
       bang()
     end
-    redraw()
+    --redraw()
+    screen_dirty = true
   elseif screen_focus % 2 == 0 then
   -- PUT OTHER SCRIPT HARDWARE CONTROLS HERE
-  refrain.key(n,z)
+    refrain.key(n,z)
   end
 end
 
@@ -954,9 +960,11 @@ function enc(n,d)
             new_preset_pool[selected_preset].sel_ppqn_div = util.clamp(new_preset_pool[selected_preset].sel_ppqn_div + d, 1, #ppqn_divisions)  
           end
             sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
-          redraw()  
+          --redraw()  
+          screen_dirty = true
         end
-          redraw()
+          --redraw()
+          screen_dirty = true
       elseif n == 3 then
         if edit == "lc_gate_probs" then
           params:set("gate prob 2", math.min(100,(math.max(params:get("gate prob 2") + d,0))))
@@ -1015,10 +1023,12 @@ function enc(n,d)
           p_duration = util.clamp(p_duration + d, 1, 32)
           new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 32)
         end
-        redraw()
+        --redraw()
+        screen_dirty = true
       end
     end
-    redraw()
+    --redraw()
+    screen_dirty = true
   elseif screen_focus % 2 == 0 then
     --PUT OTHER SCRIPT ENC CONTROLS HERE
     refrain.enc(n,d)
@@ -1147,9 +1157,9 @@ function redraw()
     end
 
     screen.update()
-  --elseif screen_focus%2==0 then
+  elseif screen_focus%2==0 then
     -- PUT OTHER SCREEN REDRAW HERE
-    --refrain.redraw()
+    refrain.redraw()
   end
 end
 
@@ -1242,7 +1252,8 @@ g.key = function(x,y,z)
       sel_ppqn_div = util.clamp(sel_ppqn_div + 1, 1, #ppqn_divisions)
     end
     grid_dirty = true
-    redraw()
+    screen_dirty = true
+    --redraw()
   end
 
   -- buttons for changing cycle modes
@@ -1256,14 +1267,16 @@ g.key = function(x,y,z)
       end
     end
     grid_dirty = true
-    redraw()
+    screen_dirty = true
+    --redraw()
   end
 
   --change active bits per voice
   if y == 1 and x <= 9 then -- ADDED: <= makes (9,1) mute voice 1
     g:led(x,y,z*15)
     voice[1].bit = 9-x
-    redraw()
+    --redraw()
+    screen_dirty = true
     grid_dirty = true
   end
   if y == 1 and x > 9 and z == 1 then
@@ -1272,13 +1285,15 @@ g.key = function(x,y,z)
     end
     g:led(x,y,z*15)
     voice[1].octave = x-13
-    redraw()
+    --redraw()
+    screen_dirty = true
     grid_dirty = true
   end
   if y == 2 and x <= 9 then -- ADDED: <= makes (9,2) mute voice 2
     g:led(x,y,z*15)
     voice[2].bit = 9-x
-    redraw()
+    --redraw()
+    screen_dirty = true
     grid_dirty = true
   end
   if y == 2 and x > 9 and z == 1 then
@@ -1287,7 +1302,8 @@ g.key = function(x,y,z)
     end
     g:led(x,y,z*15)
     voice[2].octave = x-13
-    redraw()
+    --redraw()
+    screen_dirty = true
     grid_dirty = true
   end
   
@@ -1409,9 +1425,9 @@ end
 -- hardware: grid redraw
 function redraw_clock()
   while true do
-    clock.sleep(1/15)
-    if screen_focus%2 == 0 then
-      refrain.redraw()
+    clock.sleep(1/30)
+    if screen_dirty or screen_focus % 2 == 0 then
+      redraw()
     end
     if grid_dirty then
       grid_redraw()
@@ -1660,7 +1676,8 @@ function preset_remove(set)
     --  selected_preset = util.clamp(selected_preset - 1, 1, 16)
     end
     preset_count = util.clamp(preset_count - 1, 0, 16)
-    redraw()
+    screen_dirty = true
+    --redraw()
   end
 end
 

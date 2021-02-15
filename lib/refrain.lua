@@ -106,11 +106,6 @@ end
 
 function update_positions(voice,position)
   sc_pos[voice] = (position - 1) / (track[voice].end_point - 1)
-  --print(sc_pos[voice], track[voice].start_point, track[voice].end_point)
-  --print(track[voice].position())
-  if screen_focus == 2 then 
-    refrain.redraw()
-  end
 end
 
 function refrain.reset(voice,passed)
