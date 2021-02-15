@@ -1,13 +1,6 @@
-
-# less concepts 3.0
-1. uninstall old less concepts
-2. install with ```;install https://github.com/linusschrab/less_concepts``` (post norns 210114)
-
-![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/less_concepts_grid.png?raw=true)
-
 *less concepts is rooted in the idea that complexity is just a shit-ton of simplicity, chained together. at its core, less concepts holds 65,536 possible combinations of notes which can be gated, offset, and manipulated to create minimal sequences for improvisation. small changes to a single parameter can bring sweeping or subtle changes.*
 
-*seek. think. discover.*
+*seek. think. discover.* - dan derks
 
 **less concepts 3.0**
 
@@ -15,7 +8,7 @@
 
 at first you are met by a constructive concept built from the seed 36 and rule 30. root note is C and the scale is major. the sequence is fed through the built in sound engine "passersby" and midi device 1 / channel 1.
 
-- the combination of seeds and rules feed the sequencer with 8-bit numbers. this number is visualized by the eight squares top left on the screen / grid, a new number is seeded with every beat of the selected time signature. the two voices are individually triggered when they cross paths with the true value 1. the current 8-bit number translates into a note by passing it through the limits for high / low and then transposed within the selected scale.
+- the combination of seeds and rules feed the sequencer with 8-bit numbers. this number is visualized by the eight squares top left on the screen / grid (in the screenshot above 11001111 = 207), a new number is seeded with every beat of the selected time signature. the two voices are individually triggered when they cross paths with the true value 1. the current 8-bit number (11001111 = 207) translates into a note by passing it through the limits for high / low and then transposed within the selected scale.
 
 - navigate the main performance screen by scrolling with E1, changing values with E2 and E3. adding snapshots with K2 and randomizing selected values with K3.
 
@@ -24,8 +17,13 @@ at first you are met by a constructive concept built from the seed 36 and rule 3
 
 NEWS
 
-- time: change time signature for the sequencer. 1/4 - 1/32 (more options available in params).
+- time: change time signature for the sequencer. 1/8 - 1/32 (more options available in params).
 - a cycling sequencer that steps through saved snapshots and move when the indicated duration has passed. the cycling sequencer can move up '>', down '<' or random '~'.
+
+**grid operation**
+
+![enter image description here](https://github.com/linusschrab/less_concepts/blob/master/img/less_concepts_grid.png?raw=true)
+
 
 / / / / / / / /
 
