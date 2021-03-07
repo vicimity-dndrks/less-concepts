@@ -839,12 +839,12 @@ function key(n,z)
     if n == 2 and z == 1 then
       KEY2 = true
       bang()
-      if preset_count <= 16 and edit ~= "presets" then
+      if preset_count <= 16  and edit ~= "presets" then
         preset_count = preset_count + 1
         new_preset_pack(preset_count)
-        selected_preset = 1
+        selected_preset = 1 -- FIX!
         grid_dirty = true
-      elseif preset_count <= 16 and edit == "presets" then
+      elseif preset_count <= 16 and preset_count > 0 and edit == "presets" then
         new_preset_unpack(selected_preset)
       end
     elseif n == 2 and z == 0 then
@@ -907,7 +907,8 @@ function enc(n,d)
       if n == 2 then
         if edit == "presets" then
           selected_preset = util.clamp(selected_preset+d,1,preset_count)
-          new_preset_unpack(selected_preset)
+          p_duration = new_preset_pool[selected_preset].p_duration
+          --new_preset_unpack(selected_preset)
         elseif edit == "rand_prob" then
           params:set("tran prob 1", math.min(100,(math.max(params:get("tran prob 1") + d,0))))
         elseif edit == "lc_gate_probs" then
@@ -988,7 +989,6 @@ function enc(n,d)
           end
         elseif edit == "octaves" then
           if string.find(cycle_sel, "*") ~= nil then
-            
             new_preset_pool[selected_preset].v2_octave = math.min(3,(math.max(new_preset_pool[selected_preset].v2_octave + d,-3)))
           end
           voice[2].octave = math.min(3,(math.max(voice[2].octave + d,-3)))
@@ -1020,8 +1020,10 @@ function enc(n,d)
           sel_ppqn_div = util.clamp(sel_ppqn_div + d, 1, #ppqn_divisions)
 
         elseif edit == "cycle" and preset_count > 0 then
-          p_duration = util.clamp(p_duration + d, 1, 32)
-          new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 32)
+          if string.find(cycle_sel, "*") ~= nil then
+            p_duration = util.clamp(p_duration + d, 1, 32)
+            new_preset_pool[selected_preset].p_duration = util.clamp(new_preset_pool[selected_preset].p_duration + d, 1, 32)
+          end
         end
         --redraw()
         screen_dirty = true
@@ -1059,7 +1061,11 @@ function redraw()
       ppqn_string = ppqn_names[sel_ppqn_div]
       v1_b = voice[1].bit
       v2_b = voice[2].bit
-      p_dur_string = p_duration
+      if preset_count > 0 then
+        p_dur_string = new_preset_pool[selected_preset].p_duration
+      else
+        p_dur_string = p_duration
+      end
     end
     screen.font_face(1)
     screen.font_size(8)
@@ -1153,7 +1159,7 @@ function redraw()
     screen.text(cycle_sel)
     screen.move(60,60)
     if selected_preset > 0 and preset_count > 0 then
-      screen.text("p"..selected_preset.." length: x".. p_dur_string)
+      screen.text("s"..selected_preset.." length: x".. p_dur_string)
     end
 
     screen.update()
