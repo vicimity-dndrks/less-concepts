@@ -1406,6 +1406,7 @@ g.key = function(x,y,z)
       elseif x == 16 and preset_count < 16 then
         preset_count = preset_count + 1
         new_preset_pack(preset_count)
+        selected_preset = 1
       elseif z == 0 then
         clock.cancel(press_counter[x])
       end
