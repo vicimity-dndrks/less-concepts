@@ -438,7 +438,7 @@ local function transpose(semitone)
 end
 
 function wsyn_add_params()
-  params:add_group("w/syn",11)
+  params:add_group("w/syn",12)
   params:add {
     type = "option",
     id = "wsyn_ar_mode",
@@ -538,12 +538,7 @@ function wsyn_add_params()
       pset_wsyn_lpg_symmetry = val
     end
   }
-  --params:add{
-  --  type = "trigger",
-  --  id = "wsyn_trentvis",
-  --  name = "Trentvision >>>",
-  --}
-  --[[params:add{
+  params:add{
     type = "trigger",
     id = "wsyn_pluckylog",
     name = "Pluckylogger >>>",
@@ -557,7 +552,7 @@ function wsyn_add_params()
       params:set("wsyn_lpg_time", math.random(-28, -5)/10)
       params:set("wsyn_lpg_symmetry", math.random(-50, -30)/10)
     end
-  }]]
+  }
   params:add{
     type = "trigger",
     id = "wsyn_randomize",
@@ -1061,7 +1056,7 @@ function redraw()
       ppqn_string = ppqn_names[sel_ppqn_div]
       v1_b = voice[1].bit
       v2_b = voice[2].bit
-      if preset_count > 0 then
+      if preset_count > 0 and selected_preset ~= 0 then
         p_dur_string = new_preset_pool[selected_preset].p_duration
       else
         p_dur_string = p_duration
@@ -1400,16 +1395,16 @@ g.key = function(x,y,z)
   if y == 6 and x >= 14 and x <= 16 then
     if x == 15 and preset_count > 0 and z == 1 then 
         press_counter[x] = clock.run(remove_wait, x)
-      elseif x == 14 and z == 1 then
+    elseif x == 14 and z == 1 then
         press_counter[x] = clock.run(remove_wait, x)
-      elseif x == 16 and z == 1 and preset_count < 16 then
-      elseif x == 16 and preset_count < 16 then
+    elseif x == 16 and z == 1 and preset_count < 16 then
+    elseif x == 16 and preset_count < 16 then
         preset_count = preset_count + 1
         new_preset_pack(preset_count)
         selected_preset = 1
-      elseif z == 0 then
+    elseif z == 0 and (x == 14 or x == 15) then
         clock.cancel(press_counter[x])
-      end
+    end
   elseif (y == 7 or y == 8) and z == 0 then
     if x > 8 and x < 17 and x < preset_count+9 then
       preset_key_is_held = false      
