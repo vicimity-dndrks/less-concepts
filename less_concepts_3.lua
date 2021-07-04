@@ -389,11 +389,11 @@ local function iterate()
               end
               if params:get("voice_"..i.."_crow_1") == 2 then
                 crow.output[1].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-                crow.output[2].execute()
+                crow.output[2]()
               end
               if params:get("voice_"..i.."_crow_2") == 2 then
                 crow.output[3].volts = (((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12)
-                crow.output[4].execute()
+                crow.output[4]()
               end
               if params:get("voice_"..i.."_JF") == 2 then
                 crow.ii.jf.play_note(((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add)-48)/12,5)
