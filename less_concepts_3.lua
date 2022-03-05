@@ -48,16 +48,16 @@ MusicUtil = require "musicutil"
 local m = midi.connect()
 local midi_in = midi.connect()
 
-local seed = 0
-local rule = 0
-local next_seed = nil
-local new_low = 1
-local new_high = 14
-local coll = 1
-local new_seed = seed
-local new_rule = rule
+seed = 0
+rule = 0
+next_seed = nil
+new_low = 1
+new_high = 14
+coll = 1
+new_seed = seed
+new_rule = rule
 local screen_focus = 1
-local selected_preset = 0
+selected_preset = 0
 local KEY2 = false
 local KEY3 = false
 local voice = {}
@@ -69,15 +69,14 @@ for i = 1,2 do
   voice[i].ch = 1
 end
 local semi = 0
-local preset_count = 0
-local active_notes_v1 = {}
-local active_notes_v2 = {}
+preset_count = 0
 names = {}
 notes = {}
 for i = 1, #MusicUtil.SCALES do
   table.insert(names, string.lower(MusicUtil.SCALES[i].name))
   table.insert(notes, MusicUtil.generate_scale(0, names[i], 7))
 end
+table.insert(names,"olafur")
 
 edit_foci = {
   "lc_bits",
@@ -91,7 +90,7 @@ edit_foci = {
   "cycle"
 }
 local edit = "seed/rule"
-local dd = 0
+local dd = 2
 random_gate = {}
 for i = 1,4 do
   random_gate[i] = {}
@@ -173,9 +172,14 @@ local transport_run = true
 local grid_dirty = false
 local screen_dirty = false
 
+function r()
+  norns.script.load(norns.state.script)
+end
+
 function clock.transport.start()
   if params:get("midi_transport") == 2 then
     p_duration_counter = 1
+    selected_preset = preset_count > 0 and 1 or 0
     ppqn_counter = 1
     transport_run = true
   end
@@ -187,6 +191,7 @@ function clock.transport.stop()
       notes_off(i)
     end
     transport_run = false
+    next_seed = new_seed
   end
 end
 
@@ -292,13 +297,25 @@ end
 
 function notes_off(n)
   for i=1,#voice[n].active_notes do
-    if params:get("voice_"..n.."_midi_A") == 2 then
+    if params:get("voice_"..n.."_midi_A") == 2 and
+    params:string("scale") ~= "olafur" or (params:string("scale") == "olafur" and (params:get("olafur_device") ~= params:get("midi_device"))) then
       m:note_off(voice[n].active_notes[i],0,params:get("midi_A"))
     end
-    if params:get("voice_"..n.."_midi_B") == 2 then
+    if params:get("voice_"..n.."_midi_B") == 2 and
+    params:string("scale") ~= "olafur" or (params:string("scale") == "olafur" and (params:get("olafur_device") ~= params:get("midi_device"))) then
       m:note_off(voice[n].active_notes[i],0,params:get("midi_B"))
     end
     voice[n].active_notes = {}
+  end
+end
+
+function force_notes_off()
+  for n = 1,2 do
+    for i=1,#voice[n].active_notes do
+      m:note_off(voice[n].active_notes[i],0,params:get("midi_A"))
+      m:note_off(voice[n].active_notes[i],0,params:get("midi_B"))
+      voice[n].active_notes = {}
+    end
   end
 end
 
@@ -365,7 +382,7 @@ local function iterate()
       gridnote = nil
       for i = 1,2 do
         display_voice[i] = false
-        if seed_as_binary[voice[i].bit] == 1 then
+        if seed_as_binary[voice[i].bit] == 1 and tab.count(notes[coll]) ~= 0 then
           random_gate[i].comparator = math.random(0,100)
           if random_gate[i].comparator < random_gate[i].probability then
             scale(new_low,new_high,seed)
@@ -381,10 +398,12 @@ local function iterate()
               if params:get("voice_"..i.."_engine") == 2 then
                 engine.noteOn(i,midi_to_hz((notes[coll][scaled])+(48+(voice[i].octave * 12)+semi+random_note[i].add)),100)
               end
-              if params:get("voice_"..i.."_midi_A") == 2 then
+              if params:get("voice_"..i.."_midi_A") == 2 and
+              params:string("scale") ~= "olafur" or (params:string("scale") == "olafur" and (params:get("olafur_device") ~= params:get("midi_device"))) then
                 m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_A"))
               end
-              if params:get("voice_"..i.."_midi_B") == 2 then
+              if params:get("voice_"..i.."_midi_B") == 2 and
+              params:string("scale") ~= "olafur" or (params:string("scale") == "olafur" and (params:get("olafur_device") ~= params:get("midi_device"))) then
                 m:note_on((notes[coll][scaled])+(36+(voice[i].octave*12)+semi+random_note[i].add),100,params:get("midi_B"))
               end
               if params:get("voice_"..i.."_crow_1") == 2 then
@@ -595,6 +614,28 @@ function pulse()
   end
 end
 
+function init_olafur(x)
+  olafur_in = midi.connect(x)
+  olafur_in.event = function(data)
+    local d = midi.to_msg(data)
+    if params:string("scale") == "olafur" then
+      if d.type == "note_on" then
+        table.insert(notes[coll],d.note-48)
+      elseif d.type == "note_off" and params:get("olafur_hold") == 0 then
+        for i = #notes[coll], 1, -1 do
+          if notes[coll][i] == d.note-48 then
+            table.remove(notes[coll], i)
+          end
+        end
+      end
+      new_high = #notes[coll]
+      if new_low > #notes[coll] then
+        new_low = 1
+      end
+    end
+  end
+end
+
 -- everything that happens when the script is first loaded
 function init()
   -- sets initial state
@@ -630,7 +671,7 @@ function init()
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
 
-  params:add_group("time, midi & outputs", 26)
+  params:add_group("time, midi & outputs", 29)
 
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
@@ -667,11 +708,39 @@ function init()
     end
   end)
   midi_in = midi.connect(params:get("midi_device_in"))
+  midi_device_names = {}
+  for i = 1,#midi.vports do -- query all ports
+    table.insert(midi_device_names,"port "..i..": "..util.trim_string_to_width(midi.vports[i].name,40)) -- register its name
+  end
+  params:add_option("olafur_device","olafur device",midi_device_names,1)
+  params:set_action("olafur_device", function(x)
+    if params:string("scale") == "olafur" then
+      init_olafur(x)
+    end
+  end)
+  params:add_binary("olafur_hold","olafur hold","toggle")
+  params:set_action("olafur_hold",function(x)
+    if x == 0 and params:string("scale") == "olafur" then
+      notes[coll] = {}
+      new_low = 1
+      new_high = 0
+      force_notes_off()
+    end
+  end)
+  params:add_binary("olafur_panic","olafur panic","momentary")
+  params:set_action("olafur_panic",function()
+    if params:string("scale") == "olafur" then
+      notes[coll] = {}
+      new_low = 1
+      new_high = 0
+      force_notes_off()
+    end
+  end)
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
-  params:add_option("midi_transport", "midi/link transport", {"off", "on"}, 1)
+  params:add_option("midi_transport", "start/stop with transport", {"off", "on"}, 2)
   params:set_action("midi_transport", function (x) 
-    if x == 1 then transport_run = true end
+    -- if x == 1 then transport_run = true end
   end)
   midi_seq_note_list = {}
   for i=0,127 do
@@ -727,7 +796,16 @@ function init()
 
   params:add_group("scaling & randomization",19)
   params:add_option("scale", "scale", names, 1)
-  params:set_action("scale", function(x) coll = x end)
+  params:set_action("scale", function(x)
+    if params:string("scale") == "olafur" then
+      new_low = 1
+      new_high = 1
+      notes[x] = {}
+      init_olafur(params:get("olafur_device"))
+      force_notes_off()
+    end
+    coll = x
+  end)
   params:add_number("global transpose", "global transpose", -24,24,0)
   params:set_action("global transpose", function (x) transpose(x) end)
   for i = 1,2 do
@@ -900,7 +978,7 @@ function enc(n,d)
     end
     if KEY3 == false and KEY2 == false then
       if n == 2 then
-        if edit == "presets" then
+        if edit == "presets" and selected_preset > 0 then
           selected_preset = util.clamp(selected_preset+d,1,preset_count)
           p_duration = new_preset_pool[selected_preset].p_duration
           --new_preset_unpack(selected_preset)
@@ -908,7 +986,7 @@ function enc(n,d)
           params:set("tran prob 1", math.min(100,(math.max(params:get("tran prob 1") + d,0))))
         elseif edit == "lc_gate_probs" then
           params:set("gate prob 1", math.min(100,(math.max(params:get("gate prob 1") + d,0))))
-        elseif edit == "low/high" then
+        elseif edit == "low/high" and params:string("scale") ~= "olafur" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].new_low = math.min(32,(math.max(new_preset_pool[selected_preset].new_low + d,1)))
           end
@@ -966,7 +1044,7 @@ function enc(n,d)
           params:set("gate prob 2", math.min(100,(math.max(params:get("gate prob 2") + d,0))))
         elseif edit == "rand_prob" then
           params:set("tran prob 2", math.min(100,(math.max(params:get("tran prob 2") + d,0))))
-        elseif edit == "low/high" then
+        elseif edit == "low/high" and params:string("scale") ~= "olafur" then
           if string.find(cycle_sel, "*") ~= nil then
             new_preset_pool[selected_preset].new_high = math.min(32,(math.max(new_preset_pool[selected_preset].new_high + d,1)))
           end
@@ -1580,8 +1658,13 @@ function randomize_all()
   new_rule = rule
   voice[1].bit = math.random(0,8)
   voice[2].bit = math.random(0,8)
-  new_low = math.random(params:get("lo_clamp_min"),params:get("lo_clamp_max"))
-  new_high = math.random(params:get("hi_clamp_min"),params:get("hi_clamp_max"))
+  if params:string("scale") == "olafur" and #notes[coll] ~= 0 then
+    new_low = math.random(1,#notes[coll])
+    new_high = math.random(1,#notes[coll])
+  elseif params:string("scale") ~= "olafur" then
+    new_low = math.random(params:get("lo_clamp_min"),params:get("lo_clamp_max"))
+    new_high = math.random(params:get("hi_clamp_min"),params:get("hi_clamp_max"))
+  end
   voice[1].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
   voice[2].octave = math.random(params:get("oct_clamp_min"),params:get("oct_clamp_max"))
   bang()
@@ -1598,7 +1681,7 @@ function randomize_some()
     for i = 1,2 do
       params:set("gate prob "..i, math.random(0,100))
     end
-  elseif edit == "low/high" then
+  elseif edit == "low/high" and params:string("scale") ~= "olafur" then
     new_low = math.random(params:get("lo_clamp_min"),params:get("lo_clamp_max"))
     new_high = math.random(params:get("hi_clamp_min"),params:get("hi_clamp_max"))
   elseif edit == "rand_prob" then
@@ -1642,8 +1725,10 @@ function new_preset_unpack(set)
   rule = new_rule
   voice[1].bit = new_preset_pool[set].v1_bit
   voice[2].bit = new_preset_pool[set].v2_bit
-  new_low = new_preset_pool[set].new_low
-  new_high = new_preset_pool[set].new_high
+  if params:string("scale") ~= "olafur" then
+    new_low = new_preset_pool[set].new_low
+    new_high = new_preset_pool[set].new_high
+  end
   voice[1].octave = new_preset_pool[set].v1_octave
   voice[2].octave = new_preset_pool[set].v2_octave
   sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
