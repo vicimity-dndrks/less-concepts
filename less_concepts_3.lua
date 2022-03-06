@@ -1,6 +1,6 @@
 -- less concepts 3:
 -- cellular automata sequencer
--- v3.0 by @dan_derks and
+-- v3.1 by @dan_derks and
 -- @vicimity (linus schrab)
 -- llllllll.co/t/less-concepts-3/
 --
