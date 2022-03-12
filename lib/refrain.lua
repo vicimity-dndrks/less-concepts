@@ -20,7 +20,7 @@ function refrain.init()
     "ref_rec"}--,
     --"ref_presets"}
   refrain.edit = "engine_refrain"
-  refrain.dd = 0
+  refrain.dd = 2
   sc_pos = {}
   
   params:add_control("engine_input", "engine -> ~ r e f r a i n", controlspec.new(0, 1.2, "lin", 0, 0, ""))
