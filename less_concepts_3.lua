@@ -671,7 +671,7 @@ function init()
   params:add{type = "trigger", id = "load", name = "load", action = loadstate}
   params:add{type = "trigger", id = "save", name = "save", action = savestate}
 
-  params:add_group("time, midi & outputs", 29)
+  params:add_group("time, midi & outputs", 30)
 
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
@@ -712,6 +712,33 @@ function init()
   for i = 1,#midi.vports do -- query all ports
     table.insert(midi_device_names,"port "..i..": "..util.trim_string_to_width(midi.vports[i].name,40)) -- register its name
   end
+  params:add_binary("olafur_enabled","enable olafur mode","toggle")
+  params:set_action("olafur_enabled", function(x)
+    if x == 0 then
+      params:hide("olafur_device")
+      params:hide("olafur_hold")
+      params:hide("olafur_panic")
+      if pre_olafur ~= nil and pre_olafur.scale ~= nil then
+        params:set("scale",pre_olafur.scale)
+        new_low = pre_olafur.low
+        new_high = pre_olafur.high
+      else
+        params:set("scale",1)
+        new_low = 1
+        new_high = 14
+      end
+    else
+      pre_olafur= {}
+      pre_olafur.scale = params:get("scale")
+      pre_olafur.low = new_low
+      pre_olafur.high = new_high
+      params:show("olafur_device")
+      params:show("olafur_hold")
+      params:show("olafur_panic")
+      params:set("scale",tab.key(params.params[params.lookup["scale"]].options,"olafur"))
+    end
+    _menu.rebuild_params()
+  end)
   params:add_option("olafur_device","olafur device",midi_device_names,1)
   params:set_action("olafur_device", function(x)
     if params:string("scale") == "olafur" then
@@ -1832,6 +1859,9 @@ function savestate()
   ref_savestate()
   io.close(file)
   params:write(_path.data .. "less_concepts_3/less_concepts-0"..selected_set)
+  if params:string("scale") == "olafur" then
+    tab.save(notes[coll],_path.data .. "less_concepts_3/less_concepts-olafur_notes"..selected_set..".data")
+  end
 end
 
 function loadstate()
@@ -1867,6 +1897,8 @@ function loadstate()
         voice[1].octave = tonumber(io.read())
         voice[2].octave = tonumber(io.read())
       end
+      saved_low = new_low
+      saved_high = new_high
       load_bpm = tonumber(io.read())
       load_clock = tonumber(io.read())
       load_ch_1 = tonumber(io.read())
@@ -1930,6 +1962,11 @@ function loadstate()
           new_preset_pool[i].sel_ppqn_div = util.round((1+#ppqn_divisions)/2) --set default clock div to centroid for old saves
           new_preset_pool[i].p_duration = 4
         end
+      end
+      if params:string("scale") == "olafur" then
+        notes[coll] = tab.load(_path.data .. "less_concepts_3/less_concepts-olafur_notes"..selected_set..".data")
+        new_low = saved_low
+        new_high = saved_high
       end
     else
       print("invalid data file")
