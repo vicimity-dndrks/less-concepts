@@ -47,9 +47,6 @@ passersby = include "passersby/lib/passersby_engine"
 refrain = include "lib/refrain"
 MusicUtil = require "musicutil"
 
-local m = midi.connect()
-local midi_in = midi.connect()
-
 seed = 0
 rule = 0
 next_seed = nil
@@ -666,6 +663,7 @@ function init()
   math.random(); math.random(); math.random()
   seed_to_binary()
   rule_to_binary()
+  params:add_separator("less concepts")
   params:add_group("load & save", 3)
   params:add_number("set", "set", 1,100,1)
   params:set_action("set", function (x) selected_set = x end)
@@ -692,27 +690,11 @@ function init()
   p_duration = params:get("p_duration")
 
   params:add_separator("midi")
-  params:add_number("midi_device", "midi device (out)", 1, #midi.vports, 1)
-  params:set_action("midi_device", function (x) m = midi.connect(x) end)
-  m = midi.connect(params:get("midi_device"))
-  params:add_number("midi_device_in", "midi device (in)", 1, #midi.vports, 2)
-  params:set_action("midi_device_in", function (x)
-    midi_in = midi.connect(x)
-    midi_in.event = function(data)
-      local d = midi.to_msg(data)
-      if d.type == "note_on" then
-        if params:get("midi_seq_root") + preset_count >= d.note + 1 then
-          selected_preset = util.clamp(d.note - params:get("midi_seq_root") + 2, 1, preset_count)
-          new_preset_unpack(selected_preset)
-        end
-      end
-    end
-  end)
-  midi_in = midi.connect(params:get("midi_device_in"))
   midi_device_names = {}
   for i = 1,#midi.vports do -- query all ports
     table.insert(midi_device_names,"port "..i..": "..util.trim_string_to_width(midi.vports[i].name,40)) -- register its name
   end
+
   params:add_binary("olafur_enabled","enable olafur mode","toggle")
   params:set_action("olafur_enabled", function(x)
     if x == 0 then
@@ -764,6 +746,22 @@ function init()
       force_notes_off()
     end
   end)
+
+  params:add_option("midi_device", "midi (out)", midi_device_names, 1)
+  params:set_action("midi_device", function (x) m = midi.connect(x) end)
+  params:add_option("midi_device_in", "midi (in)", midi_device_names, 2)
+  params:set_action("midi_device_in", function (x)
+    midi_in = midi.connect(x)
+    midi_in.event = function(data)
+      local d = midi.to_msg(data)
+      if d.type == "note_on" then
+        if params:get("midi_seq_root") + preset_count >= d.note + 1 then
+          selected_preset = util.clamp(d.note - params:get("midi_seq_root") + 2, 1, preset_count)
+          new_preset_unpack(selected_preset)
+        end
+      end
+    end
+  end)
   params:add_number("midi_A", "midi ch A", 1,16,1)
   params:add_number("midi_B", "midi ch B", 1,16,1)
   params:add_option("midi_transport", "start/stop with transport", {"off", "on"}, 2)
@@ -777,7 +775,7 @@ function init()
   params:add_option("midi_seq_root","midi -> snapshots root", midi_seq_note_list,61)
   params:add_separator("voice 1 outputs")
   params:add_option("voice_1_engine", "vox 1 -> engine", {"no", "yes"}, 2)
-  params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 2)
+  params:add_option("voice_1_midi_A", "vox 1 -> midi ch A", {"no", "yes"}, 1)
   params:add_option("voice_1_midi_B", "vox 1 -> midi ch B", {"no", "yes"}, 1)
   params:add_option("voice_1_crow_1", "vox 1 -> crow 1/2", {"no", "yes"}, 1)
   params:set_action("voice_1_crow_1", function (x)
@@ -800,7 +798,7 @@ function init()
   params:add_option("voice_1_w", "vox 1 -> w/syn", {"no", "yes"}, 1)
   params:add_separator("voice 2 outputs")
   params:add_option("voice_2_engine", "vox 2 -> engine", {"no", "yes"}, 2)
-  params:add_option("voice_2_midi_A", "vox 2 -> midi ch A", {"no", "yes"}, 2)
+  params:add_option("voice_2_midi_A", "vox 2 -> midi ch A", {"no", "yes"}, 1)
   params:add_option("voice_2_midi_B", "vox 2 -> midi ch B", {"no", "yes"}, 1)
   params:add_option("voice_2_crow_1", "vox 2 -> crow 1/2", {"no", "yes"}, 1)
   params:set_action("voice_2_crow_1", function (x)
