@@ -1,7 +1,7 @@
 -- less concepts:
 -- cellular automata sequencer
--- v3.1 220403 by @dan_derks +
--- @vicimity (linus schrab)
+-- v3.1 220403 by @vicimity (linus schrab)
+-- + @dan_derks (dan derks)
 -- llllllll.co/t/less-concepts-3/
 --
 -- hold key 1: switch between
