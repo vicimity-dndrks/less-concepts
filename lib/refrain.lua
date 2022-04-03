@@ -3,7 +3,7 @@ local refrain = {}
 math.randomseed(os.time())      -- Seeds the pseudo-random number generator
 
 function refrain.init()
-
+  params:add_group("~ r e f r a i n", 31)
   print("r e f r a i n")
   track = {}
   state = {"rec", "rec"}
@@ -29,15 +29,17 @@ function refrain.init()
   params:set_action("input_input", function(x) audio.level_adc_cut(x) end)
   params:add_option("note -> param", "note -> param", refrain.scaled, 1)
   params:set_action("note -> param", function(x) note_to_param = refrain.scaled[x] end)
-  params:add_separator()
   
   softcut.buffer_clear()
   audio.level_cut(1)
-  audio.level_adc_cut(1)
-  audio.level_eng_cut(0)
+  -- audio.level_adc_cut(1)
+  -- audio.level_eng_cut(0)
   softcut.pan(1, -0.7)
   softcut.pan(2, 0.7)
   
+  softcut.buffer(1,1)
+  softcut.buffer(2,2)
+
   for i = 1, 2 do
     track[i] = {}
     track[i].start_point = 1
@@ -49,25 +51,19 @@ function refrain.init()
     audio.level_eng_cut(1)
     softcut.level_input_cut(1, i, 1.0)
     softcut.level_input_cut(2, i, 1.0)
-    softcut.buffer(1,1)
-    softcut.buffer(2,2)
+    softcut.level_slew_time(i,0.01)
 
     softcut.play(i, 1)
     softcut.rate(i, 1)
     softcut.loop_start(i, 1)
     softcut.loop_end(i, 9)
     softcut.loop(i, 1)
-    softcut.fade_time(i, 0.2)
+    softcut.fade_time(i, 0.01)
     softcut.rec(i, 1)
     softcut.rec_level(i, 1)
     softcut.position(i, 1)
     softcut.rec_offset(i, -0.0003)
     softcut.enable(i, 1)
-    softcut.filter_dry(i, 0.125)
-    softcut.filter_fc(i, 1200)
-    softcut.filter_lp(i, 0)
-    softcut.filter_bp(i, 1.0)
-    softcut.filter_rq(i, 2.0)
 
     softcut.phase_quant(i,0.07)
     softcut.event_phase(update_positions)
@@ -85,22 +81,64 @@ end
 
 function add_params()
   for i = 1,2 do
-    params:add_control(i .. "feedback", i .. " feedback", controlspec.new(0, 1, "lin", 0, .2, ""))
+    params:add_separator("voice "..i)
+    params:add_control(i .. "feedback", "feedback", controlspec.new(0, 1, "lin", 0, 0.2, ""))
     params:set_action(i .. "feedback", function(x)
       if state[i] == "rec" then
         softcut.pre_level(i, x)
       end
     end)
-    params:add_control(i .. "gate prob ~refrain", i .. " gate prob ~refrain", controlspec.new(0,100,'lin',1,100,'%'))
+    params:add_control(i .. "gate prob ~refrain", "gate prob ~refrain", controlspec.new(0,100,'lin',1,100,'%'))
     params:set_action(i .. "gate prob ~refrain", function(x) random_gate[i+2].probability = x end)
-    params:add_control(i .. "filter_fc", i .. " filter cutoff", controlspec.new(10, 1200, "exp", 1, 1200, "hz"))
-    params:set_action(i .. "filter_fc", function(x) softcut.filter_fc(i, x) end)
-    params:add_control(i .. "speed_slew", i .. " speed slew", controlspec.new(0, 1, "lin", 0, 0.0, ""))
+
+    params:add_control("post_filter_fc_"..i,"filter cutoff",controlspec.new(0,12000,'lin',0.01,12000,''))
+    params:set_action("post_filter_fc_"..i, function(x) softcut.post_filter_fc(i,x) end)
+    params:add_control("post_filter_lp_"..i,"lopass",controlspec.new(0,1,'lin',0,0,''))
+    params:set_action("post_filter_lp_"..i, function(x) softcut.post_filter_lp(i,x) end)
+    params:add_control("post_filter_hp_"..i,"hipass",controlspec.new(0,1,'lin',0.01,0,''))
+    params:set_action("post_filter_hp_"..i, function(x) softcut.post_filter_hp(i,x) end)
+    params:add_control("post_filter_bp_"..i,"bandpass",controlspec.new(0,1,'lin',0.01,0,''))
+    params:set_action("post_filter_bp_"..i, function(x) softcut.post_filter_bp(i,x) end)
+    params:add_control("post_filter_dry_"..i,"dry",controlspec.new(0,1,'lin',0.01,1,''))
+    params:set_action("post_filter_dry_"..i, function(x) softcut.post_filter_dry(i,x) end)
+    params:add_control("post_filter_rq_"..i,"resonance (0 = high)",controlspec.new(0.01,2,'lin',0.01,2,''))
+    params:set_action("post_filter_rq_"..i, function(x) softcut.post_filter_rq(i,x) end)
+
+    params:add_control(i .. "speed_slew", "speed slew", controlspec.new(0, 1, "lin", 0, 0.0, ""))
     params:set_action(i .. "speed_slew", function(x) softcut.rate_slew_time(i, x) end)
-    params:add_control(i .. "pan_slew", i .. " pan slew", controlspec.new(0.,200.,'lin',0.1,50.0))
+    params:add_control(i .. "pan_slew", "pan slew", controlspec.new(0.,200.,'lin',0.1,1))
     params:set_action(i .. "pan_slew", function(x) softcut.pan_slew_time(i,x) end)
-    params:add_control(i .. "volume", i .. " volume", controlspec.new(0,3,"lin",0,1,""))
+    params:add_control(i .. "volume", "volume", controlspec.new(0,5,"lin",0,1,""))
     params:set_action(i .. "volume", function(x) softcut.level(i,x)end)
+    params:add{
+      type = "file",
+      id = i.."sample",
+      name = "sample",
+      path = _path.audio,
+      action = function(file) load_audio(file,i) end
+    }
+    params:add_binary(i.."reset_softcut_voice_","clear sample","momentary")
+    params:set_action(i.."reset_softcut_voice_", function()
+      if params:get(i.."sample") ~= "/home/we/dust/audio/" and all_loaded then
+        softcut.buffer_clear_channel(i)
+        softcut.level_input_cut(1,i,1)
+        softcut.level_input_cut(2,i,1)
+        params:set(i.."feedback",0.2)
+        params:set(i.."sample", "/home/we/dust/audio/")
+      end
+    end)
+
+  end
+end
+
+function load_audio(file,voice)
+  if file ~= "/home/we/dust/audio/" then
+    softcut.buffer_clear_channel(voice)
+    softcut.buffer_read_mono(file,0,1,8,1,voice)
+    -- softcut.position(voice,1)
+    softcut.level_input_cut(1,voice,0)
+    softcut.level_input_cut(2,voice,0)
+    params:set(voice.."feedback",1)
   end
 end
 
@@ -318,6 +356,8 @@ end
 function ref_loadstate()
   refrain_file = io.read()
   if refrain_file == "refrain" then  
+    softcut.level(1,0)
+    softcut.level(2,0)
     for i=1,2 do
       track[i].offset = tonumber(io.read())
       local temp_rate = tonumber(io.read())
@@ -331,33 +371,34 @@ function ref_loadstate()
       track[i].start_point = 1
       track[i].end_point = 9
 
-      audio.level_eng_cut(1)
+      -- audio.level_eng_cut(1)
+      softcut.buffer_clear_channel(i)
       softcut.level_input_cut(1, i, 1.0)
       softcut.level_input_cut(2, i, 1.0)
-      softcut.buffer(1,1)
-      softcut.buffer(2,2)
 
-      softcut.play(i, 1)
-      softcut.rate(i, 1)
-      softcut.loop_start(i, 1)
-      softcut.loop_end(i, 9)
-      softcut.loop(i, 1)
-      softcut.fade_time(i, 0.2)
-      softcut.rec(i, 1)
-      softcut.rec_level(i, 1)
-      softcut.position(i, 1)
-      softcut.rec_offset(i, -0.0003)
-      softcut.enable(i, 1)
-      softcut.filter_dry(i, 0.125)
-      softcut.filter_fc(i, 1200)
-      softcut.filter_lp(i, 0)
-      softcut.filter_bp(i, 1.0)
-      softcut.filter_rq(i, 2.0)
+      -- softcut.enable(i, 1)
+      -- softcut.play(i, 1)
+      -- softcut.rate(i, 1)
+      -- softcut.loop_start(i, 1)
+      -- softcut.loop_end(i, 9)
+      -- softcut.loop(i, 1)
+      -- softcut.fade_time(i, 0.01)
+      -- softcut.rec(i, 1)
+      -- softcut.rec_level(i, 1)
+      if state[i] == "rec" then
+        softcut.rec_level(i, 1)
+      else
+        softcut.rec_level(i, 0)
+      end
+      -- softcut.position(i,0)
+      -- softcut.position(i, 1)
+      -- softcut.rec_offset(i, -0.0003)
 
       softcut.phase_quant(i,0.07)
       softcut.event_phase(update_positions)
       softcut.poll_start_phase()
-      params:bang()
+      softcut.level(i,params:get(i.."volume"))
+      -- params:bang()
     end
   else
     print("invalid data file (refrain)")

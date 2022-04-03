@@ -1,6 +1,6 @@
 -- less concepts 3:
 -- cellular automata sequencer
--- v3.1 220401 by @dan_derks +
+-- v3.1 220403 by @dan_derks +
 -- @vicimity (linus schrab)
 -- llllllll.co/t/less-concepts-3/
 --
@@ -76,6 +76,7 @@ for i = 1, #MusicUtil.SCALES do
   table.insert(notes, MusicUtil.generate_scale(0, names[i], 7))
 end
 table.insert(names,"olafur")
+active_olafur_notes = 0
 
 edit_foci = {
   "lc_bits",
@@ -304,6 +305,7 @@ function notes_off(n)
     params:string("scale") ~= "olafur" or (params:string("scale") == "olafur" and (params:get("olafur_device") ~= params:get("midi_device"))) then
       m:note_off(voice[n].active_notes[i],0,params:get("midi_B"))
     end
+    -- engine.noteOff(n)
     voice[n].active_notes = {}
   end
 end
@@ -619,11 +621,16 @@ function init_olafur(x)
     local d = midi.to_msg(data)
     if params:string("scale") == "olafur" then
       if d.type == "note_on" then
+        if tab.count(notes[coll]) > 0 and active_olafur_notes == 0 then
+          notes[coll] = {}
+        end
+        active_olafur_notes = active_olafur_notes + 1
         table.insert(notes[coll],d.note-48)
       elseif d.type == "note_off" and params:get("olafur_hold") == 0 then
         for i = #notes[coll], 1, -1 do
           if notes[coll][i] == d.note-48 then
             table.remove(notes[coll], i)
+            active_olafur_notes = active_olafur_notes - 1
           end
         end
       end
@@ -663,15 +670,26 @@ function init()
   math.random(); math.random(); math.random()
   seed_to_binary()
   rule_to_binary()
+
+  params.action_write = function(filename, name, pset_number)
+    savestate(pset_number)
+  end
+  params.action_read = function(filename, silent, pset_number)
+    loadstate(pset_number)
+  end
+  params.action_delete = function(filename, name, pset_number)
+    norns.system_cmd("rm -r "..norns.state.data.."/"..pset_number.."/")
+  end
+
   params:add_separator("less concepts")
-  params:add_group("load & save", 3)
+
+  params:add_group("historical load", 3)
+  params:add_separator("AS OF APRIL 2022, USE PSETS")
   params:add_number("set", "set", 1,100,1)
   params:set_action("set", function (x) selected_set = x end)
-  params:add{type = "trigger", id = "load", name = "load", action = loadstate}
-  params:add{type = "trigger", id = "save", name = "save", action = savestate}
+  params:add{type = "trigger", id = "load", name = "load", action = historical_loadstate}
 
-  params:add_group("time, midi & outputs", 30)
-
+  params:add_group("time, midi & outputs", 32)
   params:add_separator("time (locked with presets)")
   params:add_option("time_div_opt", "time range", {"legacy 1/8 - 1/32", "slow 1/1 - 1/16", "full 2/1 - 1/32"}, 1)
   params:set_action("time_div_opt", function(x)
@@ -692,7 +710,7 @@ function init()
   params:add_separator("midi")
   midi_device_names = {}
   for i = 1,#midi.vports do -- query all ports
-    table.insert(midi_device_names,"port "..i..": "..util.trim_string_to_width(midi.vports[i].name,40)) -- register its name
+    table.insert(midi_device_names,"port "..i..": "..util.trim_string_to_width(midi.vports[i].name,48)) -- register its name
   end
 
   params:add_binary("olafur_enabled","enable olafur mode","toggle")
@@ -701,6 +719,7 @@ function init()
       params:hide("olafur_device")
       params:hide("olafur_hold")
       params:hide("olafur_panic")
+      params:hide("olafur_snapshot")
       if pre_olafur ~= nil and pre_olafur.scale ~= nil then
         params:set("scale",pre_olafur.scale)
         new_low = pre_olafur.low
@@ -718,17 +737,18 @@ function init()
       params:show("olafur_device")
       params:show("olafur_hold")
       params:show("olafur_panic")
+      params:show("olafur_snapshot")
       params:set("scale",tab.key(params.params[params.lookup["scale"]].options,"olafur"))
     end
     _menu.rebuild_params()
   end)
-  params:add_option("olafur_device","olafur device",midi_device_names,1)
+  params:add_option("olafur_device","--> device",midi_device_names,1)
   params:set_action("olafur_device", function(x)
     if params:string("scale") == "olafur" then
       init_olafur(x)
     end
   end)
-  params:add_binary("olafur_hold","olafur hold","toggle")
+  params:add_binary("olafur_hold","--> hold","toggle")
   params:set_action("olafur_hold",function(x)
     if x == 0 and params:string("scale") == "olafur" then
       notes[coll] = {}
@@ -737,27 +757,40 @@ function init()
       force_notes_off()
     end
   end)
-  params:add_binary("olafur_panic","olafur panic","momentary")
+  params:add_binary("olafur_panic","--> panic","momentary")
   params:set_action("olafur_panic",function()
     if params:string("scale") == "olafur" then
       notes[coll] = {}
       new_low = 1
       new_high = 0
+      active_olafur_notes = 0
       force_notes_off()
     end
   end)
+  params:add_option("olafur_snapshot","--> save with snapshots",{"off","on"},1)
 
   params:add_option("midi_device", "midi (out)", midi_device_names, 1)
   params:set_action("midi_device", function (x) m = midi.connect(x) end)
+  params:add_binary("midi_device_in_enabled","enable midi note in control","toggle")
+  params:set_action("midi_device_in_enabled", function(x)
+    if x == 0 then
+      params:hide("midi_device_in")
+    else
+      params:show("midi_device_in")
+    end
+    _menu.rebuild_params()
+  end)
   params:add_option("midi_device_in", "midi (in)", midi_device_names, 2)
-  params:set_action("midi_device_in", function (x)
-    midi_in = midi.connect(x)
-    midi_in.event = function(data)
-      local d = midi.to_msg(data)
-      if d.type == "note_on" then
-        if params:get("midi_seq_root") + preset_count >= d.note + 1 then
-          selected_preset = util.clamp(d.note - params:get("midi_seq_root") + 2, 1, preset_count)
-          new_preset_unpack(selected_preset)
+  params:set_action("midi_device_in", function(x)
+    if params:get("midi_device_in_enabled") == 1 then
+      midi_in = midi.connect(x)
+      midi_in.event = function(data)
+        local d = midi.to_msg(data)
+        if d.type == "note_on" then
+          if params:get("midi_seq_root") + preset_count >= d.note + 1 then
+            selected_preset = util.clamp(d.note - params:get("midi_seq_root") + 2, 1, preset_count)
+            new_preset_unpack(selected_preset)
+          end
         end
       end
     end
@@ -907,8 +940,7 @@ function init()
       params:set("oct_clamp_max", params:get("oct_clamp_min") + 1)
     end  
   end)
-
-  params:add_group("~ r e f r a i n", 16)
+  
   refrain.init()
   
   params:add_group("passersby", 31)
@@ -923,6 +955,8 @@ function init()
 
   grid_dirty = true
   clock.run(redraw_clock)
+
+  all_loaded = true
 
 end 
 
@@ -1503,7 +1537,7 @@ g.key = function(x,y,z)
       elseif x == 16 and preset_count < 16 then
           preset_count = preset_count + 1
           new_preset_pack(preset_count)
-          selected_preset = 1
+          -- selected_preset = 1
       elseif z == 0 and (x == 14 or x == 15) then
           clock.cancel(press_counter[x])
       end
@@ -1941,6 +1975,21 @@ end
 
 -- pack all maths parameters into a volatile preset
 
+function deep_copy(orig)
+  local orig_type = type(orig)
+  local copy
+  if orig_type == "table" then
+    copy = {}
+    for orig_key, orig_value in next, orig, nil do
+        copy[deep_copy(orig_key)] = deep_copy(orig_value)
+    end
+    setmetatable(copy, deep_copy(getmetatable(orig)))
+  else
+    copy = orig
+  end
+  return copy
+end
+
 function new_preset_pack(set)
   new_preset_pool[set].seed = new_seed
   new_preset_pool[set].rule = new_rule
@@ -1952,6 +2001,10 @@ function new_preset_pack(set)
   new_preset_pool[set].v2_octave = voice[2].octave
   new_preset_pool[set].sel_ppqn_div = sel_ppqn_div
   new_preset_pool[set].p_duration = p_duration
+  if params:string("olafur_snapshot") == "on" then
+    new_preset_pool[set].olafur_notes = deep_copy(notes[coll])
+  end
+  selected_preset = set
 end
 
 function new_preset_unpack(set)
@@ -1961,7 +2014,7 @@ function new_preset_unpack(set)
   rule = new_rule
   voice[1].bit = new_preset_pool[set].v1_bit
   voice[2].bit = new_preset_pool[set].v2_bit
-  if params:string("scale") ~= "olafur" then
+  if (params:string("scale") ~= "olafur") or (params:string("scale") == "olafur" and params:string("olafur_snapshot") == "on") then
     new_low = new_preset_pool[set].new_low
     new_high = new_preset_pool[set].new_high
   end
@@ -1970,6 +2023,9 @@ function new_preset_unpack(set)
   sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
   p_duration = new_preset_pool[set].p_duration
   p_duration_counter = 1
+  if params:string("olafur_snapshot") == "on" then
+    notes[coll] = deep_copy(new_preset_pool[set].olafur_notes)
+  end
   bang()
   grid_dirty = true
 end
@@ -2005,14 +2061,14 @@ function preset_remove(set)
 end
 
 -- save snapshots as presets
--- cannibalized from @justmat
 
-function savestate()
-  local dirname = _path.data.."less_concepts_3/"
-  if os.rename(dirname, dirname) == nil then
-    os.execute("mkdir " .. dirname)
-  end
-  local file = io.open(_path.data .. "less_concepts_3/less_concepts-pattern"..selected_set..".data", "w+")
+function savestate(pset_number)
+  os.execute("mkdir -p "..norns.state.data.."/"..pset_number.."/")
+  -- local dirname = _path.data.."less_concepts_3/"
+  -- if os.rename(dirname, dirname) == nil then
+  --   os.execute("mkdir " .. dirname)
+  -- end
+  local file = io.open(norns.state.data.."/"..pset_number.."/script_settings.data", "w+")
   io.output(file)
   io.write("permanence".."\n")
   io.write(preset_count.."\n")
@@ -2067,14 +2123,126 @@ function savestate()
   io.write(cycle_sel .. "\n")
   ref_savestate()
   io.close(file)
-  params:write(_path.data .. "less_concepts_3/less_concepts-0"..selected_set)
   if params:string("scale") == "olafur" then
-    tab.save(notes[coll],_path.data .. "less_concepts_3/less_concepts-olafur_notes"..selected_set..".data")
+    tab.save(notes[coll],norns.state.data.."/"..pset_number.."/olafur_notes.data")
+    if params:string("olafur_snapshot") == "on" then
+      for i = 1,preset_count do
+        tab.save(new_preset_pool[i].olafur_notes,norns.state.data.."/"..pset_number.."/olafur_notes"..i..".data")
+      end
+    end
   end
 end
 
-function loadstate()
+function historical_loadstate()
   local file = io.open(_path.data .. "less_concepts_3/less_concepts-pattern"..selected_set..".data", "r")
+  if file then
+    io.input(file)
+    filetype = io.read()
+    if filetype == "permanence" then
+      preset_count = tonumber(io.read())
+      if preset_count > 0 then
+        selected_preset = 1
+      else
+        selected_preset = 0
+      end
+      if preset_count > 0 then
+        for i = 1,preset_count do
+          new_preset_pool[i].seed = tonumber(io.read())
+          new_preset_pool[i].rule = tonumber(io.read())
+          new_preset_pool[i].v1_bit = tonumber(io.read())
+          new_preset_pool[i].v2_bit = tonumber(io.read())
+          new_preset_pool[i].new_low = tonumber(io.read())
+          new_preset_pool[i].new_high = tonumber(io.read())
+          new_preset_pool[i].v1_octave = tonumber(io.read())
+          new_preset_pool[i].v2_octave = tonumber(io.read())
+        end
+      else
+        seed = tonumber(io.read())
+        rule = tonumber(io.read())
+        voice[1].bit = tonumber(io.read())
+        voice[2].bit = tonumber(io.read())
+        new_low = tonumber(io.read())
+        new_high = tonumber(io.read())
+        voice[1].octave = tonumber(io.read())
+        voice[2].octave = tonumber(io.read())
+      end
+      load_bpm = tonumber(io.read())
+      load_clock = tonumber(io.read())
+      load_ch_1 = tonumber(io.read())
+      load_ch_2 = tonumber(io.read())
+      load_scale = tonumber(io.read())
+      load_global_trans = tonumber(io.read())
+      load_tran_1 = tonumber(io.read())
+      load_tran_prob_1 = tonumber(io.read())
+      load_tran_2 = tonumber(io.read())
+      load_tran_prob_2 = tonumber(io.read())
+      if load_bpm == nil and load_clock == nil and load_ch_1 == nil and 
+      load_ch_2 == nil and load_scale == nil and load_global_trans == nil then
+        --params:set("clock_tempo", 110)
+        --params:set("clock_midi_out", 1)
+        params:set("midi_A", 1)
+        params:set("midi_B", 1)
+        params:set("scale", 1)
+        params:set("global transpose", 0)
+      else
+        --params:set("clock_tempo", load_bpm)
+        --params:set("clock_midi_out", load_clock)
+        params:set("midi_A", load_ch_1)
+        params:set("midi_B", load_ch_2)
+        params:set("scale", load_scale)
+        params:set("global transpose", load_global_trans)
+        params:set("transpose 1", load_tran_1)
+        params:set("transpose 2", load_tran_2)
+        params:set("tran prob 1", load_tran_prob_1)
+        params:set("tran prob 2", load_tran_prob_2)
+      end
+      extended_file = io.read()
+      if extended_file == "LC3" then
+
+        params:set("time_div_opt", tonumber(io.read()))
+        selected_time_param = tonumber(io.read())
+        ppqn_names = ppqn_names_variants[selected_time_param]
+        ppqn_divisions = ppqn_divisions_variants[selected_time_param]
+        params:set("time_div_opt", selected_time_param)
+        if preset_count == 0 then
+          selected_preset = 0
+          sel_ppqn_div = tonumber(io.read())
+          p_duration = tonumber(io.read())
+        else
+          for i = 1,preset_count do
+            new_preset_pool[i].sel_ppqn_div = tonumber(io.read())
+            new_preset_pool[i].p_duration = tonumber(io.read())
+          end
+          new_preset_unpack(selected_preset)
+        end
+        cycle_sel = tostring(io.read())
+        ref_loadstate()
+        params:read(_path.data .. "less_concepts_3/less_concepts-0"..selected_set)
+        params:bang()
+        params:set("wsyn_init",1)
+      else
+        --tlc for pre 2.2 saves
+        sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+        params:set("time_div_opt", 1)
+        selected_preset = 0
+        for i = 1,preset_count do
+          new_preset_pool[i].sel_ppqn_div = util.round((1+#ppqn_divisions)/2) --set default clock div to centroid for old saves
+          new_preset_pool[i].p_duration = 4
+        end
+      end
+    else
+      print("invalid data file")
+    end
+    io.close(file)
+    grid_dirty = true
+  else
+    print("no historical save file preset, use PSETs")
+  end
+end
+
+function loadstate(pset_number)
+  all_loaded = false
+  local file = io.open(norns.state.data.."/"..pset_number.."/script_settings.data", "r")
   if file then
     io.input(file)
     filetype = io.read()
@@ -2159,7 +2327,6 @@ function loadstate()
         end
         cycle_sel = tostring(io.read())
         ref_loadstate()
-        params:read(_path.data .. "less_concepts_3/less_concepts-0"..selected_set)
         params:bang()
         params:set("wsyn_init",1)
       else
@@ -2173,9 +2340,17 @@ function loadstate()
         end
       end
       if params:string("scale") == "olafur" then
-        notes[coll] = tab.load(_path.data .. "less_concepts_3/less_concepts-olafur_notes"..selected_set..".data")
+        notes[coll] = tab.load(norns.state.data.."/"..pset_number.."/olafur_notes.data")
+        if params:string("olafur_snapshot") == "on" then
+          for i = 1,preset_count do
+            new_preset_pool[i].olafur_notes = tab.load(norns.state.data..pset_number.."/olafur_notes"..i..".data")
+          end
+        end
         new_low = saved_low
         new_high = saved_high
+      end
+      if preset_count > 0 then
+        new_preset_unpack(selected_preset)
       end
     else
       print("invalid data file")
@@ -2183,6 +2358,7 @@ function loadstate()
     io.close(file)
     grid_dirty = true
   end
+  all_loaded = true
 end
 
 function rerun()
