@@ -1596,10 +1596,10 @@ g.key = function(x,y,z)
   
     --keys for selecting presets
     elseif (y == 8 or y == 7) and z == 1 then
-      if y == 7 then
+      if y == 7 and x < preset_count + 1 then
         selected_preset = x
         new_preset_unpack(x)
-      elseif y == 8 then
+      elseif y == 8 and x + 8 < preset_count + 1 then
         selected_preset = x+8
         new_preset_unpack(x+8)
       end
@@ -1618,7 +1618,7 @@ g.key = function(x,y,z)
       elseif x == 8 and preset_count < 16 then
           preset_count = preset_count + 1
           new_preset_pack(preset_count)
-          selected_preset = 1
+          -- selected_preset = 1
       elseif z == 0 and (x == 6 or x == 7) then
           clock.cancel(press_counter[x])
       end
@@ -2008,26 +2008,28 @@ function new_preset_pack(set)
 end
 
 function new_preset_unpack(set)
-  new_seed = new_preset_pool[set].seed
-  seed = new_seed
-  new_rule = new_preset_pool[set].rule
-  rule = new_rule
-  voice[1].bit = new_preset_pool[set].v1_bit
-  voice[2].bit = new_preset_pool[set].v2_bit
-  if (params:string("scale") ~= "olafur") or (params:string("scale") == "olafur" and params:string("olafur_snapshot") == "on") then
-    new_low = new_preset_pool[set].new_low
-    new_high = new_preset_pool[set].new_high
+  if type(new_preset_pool[set].seed) ~= "table" then
+    new_seed = new_preset_pool[set].seed
+    seed = new_seed
+    new_rule = new_preset_pool[set].rule
+    rule = new_rule
+    voice[1].bit = new_preset_pool[set].v1_bit
+    voice[2].bit = new_preset_pool[set].v2_bit
+    if (params:string("scale") ~= "olafur") or (params:string("scale") == "olafur" and params:string("olafur_snapshot") == "on") then
+      new_low = new_preset_pool[set].new_low
+      new_high = new_preset_pool[set].new_high
+    end
+    voice[1].octave = new_preset_pool[set].v1_octave
+    voice[2].octave = new_preset_pool[set].v2_octave
+    sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
+    p_duration = new_preset_pool[set].p_duration
+    p_duration_counter = 1
+    if params:string("olafur_snapshot") == "on" then
+      notes[coll] = deep_copy(new_preset_pool[set].olafur_notes)
+    end
+    bang()
+    grid_dirty = true
   end
-  voice[1].octave = new_preset_pool[set].v1_octave
-  voice[2].octave = new_preset_pool[set].v2_octave
-  sel_ppqn_div = new_preset_pool[set].sel_ppqn_div
-  p_duration = new_preset_pool[set].p_duration
-  p_duration_counter = 1
-  if params:string("olafur_snapshot") == "on" then
-    notes[coll] = deep_copy(new_preset_pool[set].olafur_notes)
-  end
-  bang()
-  grid_dirty = true
 end
 
 function preset_remove(set)
