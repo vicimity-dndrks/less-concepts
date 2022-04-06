@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v3.1 220403 by @vicimity (linus schrab)
+-- v3.11 220406 by @vicimity (linus schrab)
 -- + @dan_derks (dan derks)
 -- llllllll.co/t/less-concepts-3/
 --
@@ -147,7 +147,7 @@ local ppqn_names_variants = {
 local ppqn_divisions = ppqn_divisions_variants[1]
 local ppqn_names = ppqn_names_variants[1]
 ppqn_counter = 1
-local sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
 local selected_time_param = 1
 
 time_clamp_min = 1
@@ -672,13 +672,49 @@ function init()
   rule_to_binary()
 
   params.action_write = function(filename, name, pset_number)
-    savestate(pset_number)
+    if pset_number == nil then
+      clock.run(function()
+        clock.sleep(0.25)
+        local file = io.open(norns.state.data.."pset-last.txt", "r")
+        if file then
+          io.input(file)
+          pset_number = string.format("%02d",io.read())
+          savestate(pset_number)
+          io.close(file)
+        end
+      end)
+    end
+    -- savestate(pset_number)
   end
   params.action_read = function(filename, silent, pset_number)
-    loadstate(pset_number)
+    if pset_number == nil then
+      clock.run(function()
+        clock.sleep(0.25)
+        local file = io.open(norns.state.data.."pset-last.txt", "r")
+        if file then
+          io.input(file)
+          pset_number = string.format("%02d",io.read())
+          loadstate(pset_number)
+          io.close(file)
+        end
+      end)
+    end
+    -- loadstate(pset_number)
   end
   params.action_delete = function(filename, name, pset_number)
-    norns.system_cmd("rm -r "..norns.state.data.."/"..pset_number.."/")
+    if pset_number == nil then
+      clock.run(function()
+        clock.sleep(0.25)
+        local file = io.open(norns.state.data.."pset-last.txt", "r")
+        if file then
+          io.input(file)
+          pset_number = string.format("%02d",io.read())
+          norns.system_cmd("rm -r "..norns.state.data.."/"..pset_number.."/")
+          io.close(file)
+        end
+      end)
+    end
+    -- norns.system_cmd("rm -r "..norns.state.data.."/"..pset_number.."/")
   end
 
   params:add_separator("less concepts")
@@ -697,7 +733,9 @@ function init()
       selected_time_param = x
       ppqn_divisions = ppqn_divisions_variants[selected_time_param]
       ppqn_names = ppqn_names_variants[selected_time_param]
-      sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+      if all_loaded then
+        sel_ppqn_div = util.round((1+#ppqn_divisions)/2)
+      end
 
       grid_dirty = true
     else
@@ -720,14 +758,16 @@ function init()
       params:hide("olafur_hold")
       params:hide("olafur_panic")
       params:hide("olafur_snapshot")
-      if pre_olafur ~= nil and pre_olafur.scale ~= nil then
-        params:set("scale",pre_olafur.scale)
-        new_low = pre_olafur.low
-        new_high = pre_olafur.high
-      else
-        params:set("scale",1)
-        new_low = 1
-        new_high = 14
+      if all_loaded then
+        if pre_olafur ~= nil and pre_olafur.scale ~= nil then
+          params:set("scale",pre_olafur.scale)
+          new_low = pre_olafur.low
+          new_high = pre_olafur.high
+        else
+          params:set("scale",1)
+          new_low = 1
+          new_high = 14
+        end
       end
     else
       pre_olafur= {}
@@ -2269,6 +2309,8 @@ function loadstate(pset_number)
       else
         seed = tonumber(io.read())
         rule = tonumber(io.read())
+        new_seed = seed
+        new_rule = rule
         voice[1].bit = tonumber(io.read())
         voice[2].bit = tonumber(io.read())
         new_low = tonumber(io.read())
@@ -2353,6 +2395,8 @@ function loadstate(pset_number)
       end
       if preset_count > 0 then
         new_preset_unpack(selected_preset)
+      else
+        bang()
       end
     else
       print("invalid data file")
