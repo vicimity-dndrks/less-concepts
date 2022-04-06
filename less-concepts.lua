@@ -683,8 +683,9 @@ function init()
           io.close(file)
         end
       end)
+    else
+      savestate(pset_number)
     end
-    -- savestate(pset_number)
   end
   params.action_read = function(filename, silent, pset_number)
     if pset_number == nil then
@@ -698,8 +699,9 @@ function init()
           io.close(file)
         end
       end)
+    else
+      loadstate(pset_number)
     end
-    -- loadstate(pset_number)
   end
   params.action_delete = function(filename, name, pset_number)
     if pset_number == nil then
@@ -713,8 +715,9 @@ function init()
           io.close(file)
         end
       end)
+    else
+      norns.system_cmd("rm -r "..norns.state.data.."/"..pset_number.."/")
     end
-    -- norns.system_cmd("rm -r "..norns.state.data.."/"..pset_number.."/")
   end
 
   params:add_separator("less concepts")
