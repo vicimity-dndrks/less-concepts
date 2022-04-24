@@ -1849,17 +1849,17 @@ function grid_redraw()
     end
 
     --leds for randomization
-    g:led(1,3,4)
-    g:led(2,3,4)
-    g:led(4,3,4)
-    g:led(5,3,4)
-    g:led(7,3,4)
-    g:led(8,3,4)
-    g:led(1,4,4)
-    g:led(2,4,4)
-    g:led(4,4,4)
-    g:led(5,4,4)
-    g:led(8,4,4)
+    g:led(1,3,15)
+    g:led(2,3,15)
+    g:led(4,3,15)
+    g:led(5,3,15)
+    g:led(7,3,15)
+    g:led(8,3,15)
+    g:led(1,4,15)
+    g:led(2,4,15)
+    g:led(4,4,15)
+    g:led(5,4,15)
+    g:led(8,4,15)
 
     --light up all available preses
     for i=7,8 do
@@ -1887,13 +1887,13 @@ function grid_redraw()
       if selected_preset <= 8 then
         g:led(selected_preset,7,15)
       else
-        g:led(selected_preset,8,15)
+        g:led(selected_preset-8,8,15)
       end
     end
 
-    g:led(6,6,2) --clear selected preset
-    g:led(7,6,4) --clear all presets
-    g:led(8,6,6) --add preset
+    g:led(6,6,15) --clear selected preset
+    g:led(7,6,15) --clear all presets
+    g:led(8,6,15) --add preset
 
     --leds for octaves
     -- g:led(voice[1].octave+13,1,15)
