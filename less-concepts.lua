@@ -1,6 +1,6 @@
 -- less concepts:
 -- cellular automata sequencer
--- v3.1.1 220406 by @vicimity (linus schrab)
+-- v3.1.2 230516 by @vicimity (linus schrab)
 -- + @dan_derks (dan derks)
 -- llllllll.co/t/less-concepts-3/
 --
@@ -2139,7 +2139,7 @@ function savestate(pset_number)
     io.write(voice[2].octave .. "\n")
   end
   io.write(params:get("clock_tempo") .. "\n")
-  io.write(params:get("clock_midi_out") .. "\n")
+  io.write('nil' .. "\n")
   io.write(params:get("midi_A") .. "\n")
   io.write(params:get("midi_B") .. "\n")
   io.write(params:get("scale") .. "\n")
